@@ -1,16 +1,45 @@
-# mobile_project
+# Safe Seat Project
 
-A new Flutter project.
+A professional Flutter mobile application designed for secure wallet management and user profile interactions, integrated with Supabase for real-time data and authentication.
 
-## Getting Started
+## ✨ Key Features
 
-This project is a starting point for a Flutter application.
+- **🔐 Secure Login:** Authentication powered by Supabase.
+- **👤 Profile Management:** View and edit user profile information.
+- **💰 Wallet Management:**
+  - View real-time wallet balance.
+  - Track transaction history.
+  - Process wallet withdrawals.
 
-A few resources to get you started if this is your first Flutter project:
+## 🚀 Getting Started
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### Prerequisites
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (v3.10.1 or higher)
+- [Dart](https://dart.dev/get-dart)
+- A Supabase account and project.
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/TIM1Zk/Mobile_project.git
+    cd Mobile_project
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    flutter pub get
+    ```
+
+3.  **Configure Supabase:**
+    The project is pre-configured with a Supabase instance. Ensure your environment has access to the defined URL and Key in `lib/main.dart`.
+
+4.  **Run the application:**
+    ```bash
+    flutter run
+    ```
+
+---
+
+*Developed with ❤️ using Flutter and Supabase.*
