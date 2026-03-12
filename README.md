@@ -43,3 +43,5 @@ A professional Flutter mobile application designed for secure wallet management 
 ---
 
 *Developed with ❤️ using Flutter and Supabase.*
+
+**Credit made by TIM1Zk_**
