@@ -34,21 +34,14 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "กระเป๋าเงินของฉัน",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.blueAccent,
-        centerTitle: true,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text("กระเป๋าเงินของฉัน"),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.blueAccent, Colors.white],
+            colors: [Theme.of(context).colorScheme.primary, Colors.white],
             stops: [0.0, 0.3],
           ),
         ),
@@ -102,8 +95,11 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
                       padding: const EdgeInsets.all(25.0),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20),
-                        gradient: const LinearGradient(
-                          colors: [Colors.blueAccent, Colors.blue],
+                        gradient: LinearGradient(
+                          colors: [
+                            Theme.of(context).colorScheme.primary,
+                            Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),

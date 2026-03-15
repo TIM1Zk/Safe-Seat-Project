@@ -116,13 +116,7 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "ถอนเงิน",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.blueAccent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text("ถอนเงิน"),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -130,9 +124,9 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
-              decoration: const BoxDecoration(
-                color: Colors.blueAccent,
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(30),
                   bottomRight: Radius.circular(30),
                 ),
@@ -240,24 +234,12 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
                       height: 55,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handleWithdraw,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          elevation: 5,
-                        ),
                         child: _isLoading
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
                             : const Text(
                                 "ยืนยันการถอนเงิน",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
                               ),
                       ),
                     ),

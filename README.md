@@ -1,15 +1,24 @@
-# Safe Seat Project
+# 🛡️ Safe Seat Project
+
+[![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)](https://flutter.dev)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 
 A professional Flutter mobile application designed for secure wallet management and user profile interactions, integrated with Supabase for real-time data and authentication.
+
+---
 
 ## ✨ Key Features
 
 - **🔐 Secure Login:** Authentication powered by Supabase.
-- **👤 Profile Management:** View and edit user profile information.
+- **👤 Profile Management:** View and edit user profile information with ease.
 - **💰 Wallet Management:**
-  - View real-time wallet balance.
-  - Track transaction history.
-  - Process wallet withdrawals.
+  - **Balance:** View real-time wallet balance.
+  - **History:** Track detailed transaction history.
+  - **Withdrawal:** Process wallet withdrawals securely.
+
+## 📱 Branding: "Safe Seat"
+
+**Safe Seat** represents security, reliability, and peace of mind for users managing their digital assets. The interface is designed with a modern, clean aesthetic using a professional blue-accented theme.
 
 ## 🚀 Getting Started
 
@@ -33,7 +42,7 @@ A professional Flutter mobile application designed for secure wallet management 
     ```
 
 3.  **Configure Supabase:**
-    The project is pre-configured with a Supabase instance. Ensure your environment has access to the defined URL and Key in `lib/main.dart`.
+    The project is pre-configured. Ensure your environment has access to the Supabase URL and Anon Key defined in `lib/main.dart`.
 
 4.  **Run the application:**
     ```bash
@@ -42,6 +51,12 @@ A professional Flutter mobile application designed for secure wallet management 
 
 ---
 
-*Developed with ❤️ using Flutter and Supabase.*
+## 🛠️ Built With
 
-**Credit made by TIM1Zk_**
+* [Flutter](https://flutter.dev/) - The framework used.
+* [Supabase](https://supabase.io/) - Backend and Authentication.
+* [Dio](https://pub.dev/packages/dio) - For HTTP requests.
+
+---
+
+*Developed with ❤️ by **TIM1Zk_***

@@ -25,8 +25,46 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Safe Seat Project',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueAccent,
+          primary: Colors.blueAccent,
+        ),
         useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.blueAccent,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          titleTextStyle: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shadowColor: Colors.black12,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blueAccent,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ),
       home: const LoginPage(),
       routes: {'/login': (context) => const LoginPage()},
