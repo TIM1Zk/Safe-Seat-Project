@@ -2,6 +2,7 @@
 
 [![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)](https://flutter.dev)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 A professional Flutter mobile application designed for secure wallet management and user profile interactions, integrated with Supabase for real-time data and authentication.
 
@@ -9,16 +10,33 @@ A professional Flutter mobile application designed for secure wallet management 
 
 ## ✨ Key Features
 
-- **🔐 Secure Login:** Authentication powered by Supabase.
-- **👤 Profile Management:** View and edit user profile information with ease.
-- **💰 Wallet Management:**
-  - **Balance:** View real-time wallet balance.
-  - **History:** Track detailed transaction history.
-  - **Withdrawal:** Process wallet withdrawals securely.
+- **🔐 Secure Authentication:** Robust login and logout system powered by Supabase Auth.
+- **👤 Profile Management:**
+  - View user details (Email, Username).
+  - Edit profile information with real-time updates.
+- **💰 Wallet System:**
+  - **Real-time Balance:** Persistent wallet balance tracking.
+  - **Transaction History:** Detailed logs of all wallet activities.
+  - **Secure Withdrawal:** Integrated flow for processing withdrawals.
+- **🎨 Modern UI:** Sleek, blue-accented theme with Material 3 design principles.
 
-## 📱 Branding: "Safe Seat"
+---
 
-**Safe Seat** represents security, reliability, and peace of mind for users managing their digital assets. The interface is designed with a modern, clean aesthetic using a professional blue-accented theme.
+## 📂 Project Structure
+
+```text
+lib/
+├── futures/
+│   ├── login_page/           # Authentication flow
+│   ├── profile_page/         # User profile view
+│   ├── edit_profile_page/    # Profile update forms
+│   ├── view_wallet_balance/  # Dashboard for wallet
+│   ├── view_wallet_history/  # Transaction logs
+│   └── withdraw_wallet_page/ # Withdrawal interface
+└── main.dart                 # App entry point & configuration
+```
+
+---
 
 ## 🚀 Getting Started
 
@@ -42,7 +60,7 @@ A professional Flutter mobile application designed for secure wallet management 
     ```
 
 3.  **Configure Supabase:**
-    The project is pre-configured. Ensure your environment has access to the Supabase URL and Anon Key defined in `lib/main.dart`.
+    The project uses a pre-configured Supabase instance. If you want to use your own, update the `url` and `anonKey` in `lib/main.dart`.
 
 4.  **Run the application:**
     ```bash
@@ -53,9 +71,16 @@ A professional Flutter mobile application designed for secure wallet management 
 
 ## 🛠️ Built With
 
-* [Flutter](https://flutter.dev/) - The framework used.
-* [Supabase](https://supabase.io/) - Backend and Authentication.
-* [Dio](https://pub.dev/packages/dio) - For HTTP requests.
+* [Flutter](https://flutter.dev/) - UI Framework.
+* [Supabase](https://supabase.io/) - Backend-as-a-Service (Auth & DB).
+* [Dio](https://pub.dev/packages/dio) - Efficient HTTP Client.
+* [Intl](https://pub.dev/packages/intl) - Internationalization and date formatting.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details (or it's shared as MIT by default).
 
 ---
 
