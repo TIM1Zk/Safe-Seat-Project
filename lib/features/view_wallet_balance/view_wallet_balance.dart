@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_project/futures/withdraw_wallet_page/withdraw_wallet.dart';
-import 'package:mobile_project/futures/view_wallet_history/view_wallet_history.dart';
+import 'package:mobile_project/features/withdraw_wallet_page/withdraw_wallet.dart';
+import 'package:mobile_project/features/view_wallet_history/view_wallet_history.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class WalletBalancePage extends StatefulWidget {
@@ -37,12 +37,12 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
         title: const Text("กระเป๋าเงินของฉัน"),
       ),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Theme.of(context).colorScheme.primary, Colors.white],
-            stops: [0.0, 0.3],
+            colors: [Color(0xFF121212), Color(0xFF1E1E1E)],
+            stops: [0.0, 1.0],
           ),
         ),
         child: FutureBuilder<double>(
@@ -86,7 +86,7 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
                   // --- ส่วนแสดงยอดเงิน (Card สวยๆ) ---
                   Card(
                     elevation: 8,
-                    shadowColor: Colors.blueAccent.withOpacity(0.5),
+                    shadowColor: const Color(0xFF7CE5FF).withOpacity(0.4),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -95,10 +95,10 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
                       padding: const EdgeInsets.all(25.0),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20),
-                        gradient: LinearGradient(
+                        gradient: const LinearGradient(
                           colors: [
-                            Theme.of(context).colorScheme.primary,
-                            Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                            Color(0xFF7CE5FF),
+                            Color(0xFF5580FF),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -144,13 +144,13 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
                   ),
                   const SizedBox(height: 30),
 
-                  // --- ส่วนเมนูจัดการกระเป๋าเงิน (Placeholder) ---
+                  // --- ส่วนเมนูจัดการกระเป๋าเงิน ---
                   const Text(
                     "รายการจัดการ",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 15),

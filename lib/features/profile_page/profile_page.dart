@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mobile_project/futures/edit_profile_page/edit_profile_page.dart';
-import 'package:mobile_project/futures/view_wallet_balance/view_wallet_balance.dart';
+import 'package:mobile_project/features/edit_profile_page/edit_profile_page.dart';
+import 'package:mobile_project/features/view_wallet_balance/view_wallet_balance.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -19,12 +19,9 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: Colors.grey[50],
         body: FutureBuilder<Map<String, dynamic>?>(
           future: getProfileData(),
           builder: (context, snapshot) {
@@ -51,9 +48,9 @@ class ProfilePage extends StatelessWidget {
                         Container(
                           height: 220,
                           width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: const BorderRadius.only(
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF7CE5FF),
+                            borderRadius: BorderRadius.only(
                               bottomLeft: Radius.circular(50),
                               bottomRight: Radius.circular(50),
                             ),
@@ -65,7 +62,7 @@ class ProfilePage extends StatelessWidget {
                           child: Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 4),
+                              border: Border.all(color: Colors.white, width: 3),
                               boxShadow: const [
                                 BoxShadow(
                                   color: Colors.black12,
@@ -74,13 +71,13 @@ class ProfilePage extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            child: CircleAvatar(
+                            child: const CircleAvatar(
                               radius: 60,
-                              backgroundColor: theme.colorScheme.primaryContainer,
+                              backgroundColor: Color(0xFF1E1E1E),
                               child: Icon(
                                 Icons.person,
                                 size: 70,
-                                color: theme.colorScheme.primary,
+                                color: Color(0xFF7CE5FF),
                               ),
                             ),
                           ),
@@ -123,6 +120,7 @@ class ProfilePage extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 25),
@@ -158,11 +156,11 @@ class ProfilePage extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 25),
                     child: Column(
                       children: [
-                        _buildPrimaryButton(
+                        _buildPremiumButton(
                           context: context,
                           icon: Icons.account_balance_wallet_rounded,
                           label: "กระเป๋าเงินของฉัน",
-                          color: Colors.orange[700]!,
+                          isGradient: true,
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -172,11 +170,11 @@ class ProfilePage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildPrimaryButton(
+                        _buildPremiumButton(
                           context: context,
                           icon: Icons.edit_rounded,
                           label: "แก้ไขข้อมูลส่วนตัว",
-                          color: theme.colorScheme.primary,
+                          isGradient: false,
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -228,26 +226,62 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildPrimaryButton({
+  Widget _buildPremiumButton({
     required BuildContext context,
     required IconData icon,
     required String label,
-    required Color color,
+    required bool isGradient,
     required VoidCallback onPressed,
   }) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, color: Colors.white),
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    const accentColor = Color(0xFF7CE5FF);
+    const secondaryColor = Color(0xFF5580FF);
+
+    return Container(
+      width: double.infinity,
+      height: 55,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        gradient: isGradient
+            ? const LinearGradient(
+                colors: [accentColor, secondaryColor],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        border: !isGradient
+            ? Border.all(color: accentColor.withOpacity(0.5), width: 1.5)
+            : null,
+        boxShadow: isGradient
+            ? [
+                BoxShadow(
+                  color: accentColor.withOpacity(0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ]
+            : null,
       ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        minimumSize: const Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 0,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(
+          icon,
+          color: isGradient ? const Color(0xFF0D0D0D) : accentColor,
+        ),
+        label: Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: isGradient ? const Color(0xFF0D0D0D) : accentColor,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
       ),
     );
   }
@@ -268,10 +302,10 @@ class ProfilePage extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.blue[50],
+            color: const Color(0xFF7CE5FF).withOpacity(0.1),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: Colors.blueAccent),
+          child: Icon(icon, color: const Color(0xFF7CE5FF)),
         ),
         title: Text(
           label,
@@ -282,7 +316,7 @@ class ProfilePage extends StatelessWidget {
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: Colors.white,
           ),
         ),
       ),

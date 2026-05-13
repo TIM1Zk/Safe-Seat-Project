@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_project/futures/login_page/login_page.dart';
+import 'package:mobile_project/features/login_page/login_page.dart';
+import 'package:mobile_project/features/loading_screen/loading_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ฟังก์ชัน main ตัวนอกสุดต้องเป็น async
@@ -25,13 +26,19 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Safe Seat Project',
       theme: ThemeData(
+        brightness: Brightness.dark,
+        primaryColor: const Color(0xFF7CE5FF), // Frosted Blue
+        scaffoldBackgroundColor: const Color(0xFF121212),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blueAccent,
-          primary: Colors.blueAccent,
+          seedColor: const Color(0xFF7CE5FF),
+          primary: const Color(0xFF7CE5FF),
+          secondary: const Color(0xFF5580FF), // Secondary Blue for depth
+          brightness: Brightness.dark,
+          surface: const Color(0xFF1E1E1E),
         ),
         useMaterial3: true,
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.blueAccent,
+          backgroundColor: Color(0xFF121212),
           foregroundColor: Colors.white,
           centerTitle: true,
           elevation: 0,
@@ -45,19 +52,20 @@ class MyApp extends StatelessWidget {
           iconTheme: IconThemeData(color: Colors.white),
         ),
         cardTheme: CardThemeData(
-          elevation: 2,
-          shadowColor: Colors.black12,
+          color: const Color(0xFF1E1E1E),
+          elevation: 4,
+          shadowColor: Colors.black45,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blueAccent,
-            foregroundColor: Colors.white,
+            backgroundColor: const Color(0xFF7CE5FF),
+            foregroundColor: const Color(0xFF121212), // High contrast text
             minimumSize: const Size(double.infinity, 50),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(15),
             ),
             textStyle: const TextStyle(
               fontSize: 16,
@@ -66,8 +74,11 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const LoginPage(),
-      routes: {'/login': (context) => const LoginPage()},
+      home: const LoadingScreen(),
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/loading': (context) => const LoadingScreen(),
+      },
     );
   }
 }

@@ -85,11 +85,11 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.history, size: 80, color: Colors.grey[300]),
+          Icon(Icons.history, size: 80, color: Colors.white.withOpacity(0.1)),
           const SizedBox(height: 20),
           Text(
             "ยังไม่มีประวัติการทำรายการ",
-            style: TextStyle(color: Colors.grey[600], fontSize: 18),
+            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 18),
           ),
         ],
       ),
@@ -116,7 +116,7 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: isWithdraw ? Colors.red[50] : Colors.green[50],
+            color: isWithdraw ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -126,11 +126,11 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
         ),
         title: Text(
           isWithdraw ? "ถอนเงิน" : "เติมเงิน",
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
         ),
         subtitle: Text(
           formattedDate,
-          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
         ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,

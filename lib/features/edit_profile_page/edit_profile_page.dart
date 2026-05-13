@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_project/futures/profile_page/profile_page.dart';
+import 'package:mobile_project/features/profile_page/profile_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -114,12 +114,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text("แก้ไขข้อมูลส่วนตัว"),
-        elevation: 0,
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -145,6 +141,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -240,16 +237,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: Icon(icon),
+      prefixIcon: Icon(icon, color: const Color(0xFF7CE5FF)),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: const Color(0xFF1E1E1E),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide(color: Colors.grey[200]!),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide(color: Colors.grey[200]!),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: Color(0xFF7CE5FF), width: 2),
       ),
     );
   }

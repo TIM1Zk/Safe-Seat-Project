@@ -124,9 +124,9 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                color: Color(0xFF7CE5FF),
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(30),
                   bottomRight: Radius.circular(30),
                 ),
@@ -161,7 +161,7 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -171,16 +171,17 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                       decoration: InputDecoration(
                         hintText: "0.00",
-                        prefixIcon: const Icon(Icons.attach_money),
+                        prefixIcon: const Icon(Icons.attach_money, color: Color(0xFF7CE5FF)),
                         suffixText: "บาท",
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: const Color(0xFF1E1E1E),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty)
@@ -198,7 +199,7 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -209,7 +210,7 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
                           borderRadius: BorderRadius.circular(15),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: const Color(0xFF1E1E1E),
                       ),
                       items:
                           [
@@ -235,8 +236,13 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handleWithdraw,
                         child: _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
                               )
                             : const Text(
                                 "ยืนยันการถอนเงิน",
