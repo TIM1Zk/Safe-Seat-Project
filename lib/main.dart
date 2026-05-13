@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_project/features/login_page/login_page.dart';
 import 'package:mobile_project/features/loading_screen/loading_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mobile_project/core/network/api_service.dart';
 
 // ฟังก์ชัน main ตัวนอกสุดต้องเป็น async
 Future<void> main() async {
   // 1. ต้องมีบรรทัดนี้เพื่อให้เรียกใช้ Plugin ต่างๆ ได้ถูกต้อง
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Initialize Supabase ให้เสร็จก่อนเริ่มรันแอป
-  await Supabase.initialize(
-    url: 'https://msqlhwflchydxibzfrxq.supabase.co',
-    anonKey: 'sb_publishable_Ar5FwALxoPXnW970x3KKqA_RpzxHJ0F',
-  );
+  // 2. Initialize API Service configuration
+  ApiService.init(baseUrl: 'http://10.0.2.2:3000/api');
 
   runApp(const MyApp());
 }

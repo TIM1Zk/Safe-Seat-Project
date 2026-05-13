@@ -1,39 +1,58 @@
 # 🛡️ Safe Seat Project
 
 [![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)](https://flutter.dev)
+[![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Express.js](https://img.shields.io/badge/Express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)](https://expressjs.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-A professional Flutter mobile application designed for secure wallet management and user profile interactions, integrated with Supabase for real-time data and authentication.
+A professional full-stack mobile application designed for secure wallet management and user profile interactions. 
+
+The project has recently been refactored to a strict **MVC Architecture**. The mobile app now communicates via a custom **Node.js/Express Backend API**, which handles all business logic and securely connects to **Supabase** for database operations.
 
 ---
 
 ## ✨ Key Features
 
-- **🔐 Secure Authentication:** Robust login and logout system powered by Supabase Auth.
+- **🔐 Secure Authentication:** Login system connected to the Node.js API.
 - **👤 Profile Management:**
   - View user details (Email, Username).
-  - Edit profile information with real-time updates.
+  - Edit profile information through API endpoints.
 - **💰 Wallet System:**
-  - **Real-time Balance:** Persistent wallet balance tracking.
+  - **Real-time Balance:** Fetch latest wallet balance via API.
   - **Transaction History:** Detailed logs of all wallet activities.
-  - **Secure Withdrawal:** Integrated flow for processing withdrawals.
-- **🎨 Modern UI:** Sleek, blue-accented theme with Material 3 design principles.
+  - **Secure Withdrawal:** Dedicated backend flow for processing withdrawals and recording transactions.
+- **🏗️ MVC Architecture:** Clean separation of concerns (Models, Views, Controllers) on both Frontend and Backend.
 
 ---
 
 ## 📂 Project Structure
 
+### Mobile (Flutter)
 ```text
 lib/
-├── futures/
+├── core/
+│   └── network/              # API Service (Dio Client)
+├── features/
+│   ├── edit_profile_page/    # Profile update forms (MVC)
 │   ├── login_page/           # Authentication flow
 │   ├── profile_page/         # User profile view
-│   ├── edit_profile_page/    # Profile update forms
-│   ├── view_wallet_balance/  # Dashboard for wallet
-│   ├── view_wallet_history/  # Transaction logs
-│   └── withdraw_wallet_page/ # Withdrawal interface
+│   ├── view_wallet_balance/  # Dashboard for wallet (MVC)
+│   ├── view_wallet_history/  # Transaction logs (MVC)
+│   └── withdraw_wallet_page/ # Withdrawal interface (MVC)
 └── main.dart                 # App entry point & configuration
+```
+
+### Backend (Node.js)
+```text
+backend/
+├── src/
+│   ├── controllers/          # Request handlers & Business logic
+│   ├── models/               # Data access layer (Supabase JS)
+│   ├── routes/               # Express API routes
+│   └── index.js              # Express app entry point
+├── package.json              # Node dependencies
+└── .env                      # Environment variables
 ```
 
 ---
@@ -43,44 +62,55 @@ lib/
 ### Prerequisites
 
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) (v3.10.1 or higher)
-- [Dart](https://dart.dev/get-dart)
+- [Node.js](https://nodejs.org/) (v16 or higher)
 - A Supabase account and project.
 
-### Installation
+### Installation & Setup
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/TIM1Zk/Mobile_project.git
-    cd Mobile_project
-    ```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/TIM1Zk/Mobile_project.git
+   cd Mobile_project
+   ```
 
-2.  **Install dependencies:**
-    ```bash
-    flutter pub get
-    ```
+2. **Backend Setup:**
+   ```bash
+   cd backend
+   npm install
+   ```
+   *Create a `.env` file in the `backend/` directory with your Supabase credentials (see `.env.example` or code for keys).*
 
-3.  **Configure Supabase:**
-    The project uses a pre-configured Supabase instance. If you want to use your own, update the `url` and `anonKey` in `lib/main.dart`.
+3. **Run the Backend:**
+   ```bash
+   npm run dev
+   ```
+   *(Server runs on `http://localhost:3000`)*
 
-4.  **Run the application:**
-    ```bash
-    flutter run
-    ```
+4. **Frontend Setup:**
+   ```bash
+   # Open a new terminal in the root Mobile_project directory
+   flutter pub get
+   ```
+   *Note: API base URL is configured in `lib/main.dart` (Default: `http://10.0.2.2:3000/api` for Android emulator).*
+
+5. **Run the Application:**
+   ```bash
+   flutter run
+   ```
 
 ---
 
 ## 🛠️ Built With
 
-* [Flutter](https://flutter.dev/) - UI Framework.
-* [Supabase](https://supabase.io/) - Backend-as-a-Service (Auth & DB).
-* [Dio](https://pub.dev/packages/dio) - Efficient HTTP Client.
-* [Intl](https://pub.dev/packages/intl) - Internationalization and date formatting.
+* **Frontend:** [Flutter](https://flutter.dev/), [Dio](https://pub.dev/packages/dio)
+* **Backend:** [Node.js](https://nodejs.org/), [Express.js](https://expressjs.com/)
+* **Database & Auth:** [Supabase](https://supabase.io/) (PostgreSQL)
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details (or it's shared as MIT by default).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 

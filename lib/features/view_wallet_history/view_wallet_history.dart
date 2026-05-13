@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mobile_project/core/network/api_service.dart';
 import 'package:intl/intl.dart';
 
 class WalletHistoryPage extends StatefulWidget {
@@ -23,26 +23,16 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
 
   Future<void> _loadTransactions() async {
     try {
-      // 1. Get profile ID
-      final profileData = await Supabase.instance.client
-          .from('profiles')
-          .select('id')
-          .eq('username', widget.phone)
-          .single();
+      final response = await ApiService.get('/wallets/${widget.phone}/transactions');
 
-      final profileId = profileData['id'];
-
-      // 2. Fetch transactions
-      final data = await Supabase.instance.client
-          .from('transactions')
-          .select('*')
-          .eq('profile_id', profileId)
-          .order('created_at', ascending: false);
-
-      setState(() {
-        _transactions = data;
-        _isLoading = false;
-      });
+      if (response.statusCode == 200) {
+        setState(() {
+          _transactions = response.data;
+          _isLoading = false;
+        });
+      } else {
+        throw Exception("Failed to load transactions");
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);

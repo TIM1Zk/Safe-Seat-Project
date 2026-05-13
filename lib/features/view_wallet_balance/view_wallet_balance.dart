@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_project/features/withdraw_wallet_page/withdraw_wallet.dart';
 import 'package:mobile_project/features/view_wallet_history/view_wallet_history.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mobile_project/features/view_wallet_balance/controllers/wallet_balance_controller.dart';
 
 class WalletBalancePage extends StatefulWidget {
   final String phone;
@@ -13,21 +13,18 @@ class WalletBalancePage extends StatefulWidget {
 }
 
 class _WalletBalancePageState extends State<WalletBalancePage> {
-  // ฟังก์ชันดึงข้อมูลยอดเงินจาก Supabase
-  Future<double> getWalletBalance() async {
-    final data = await Supabase.instance.client
-        .from('profiles')
-        .select('wallet!inner(balance)')
-        .eq('username', widget.phone)
-        .single();
+  late WalletBalanceController _controller;
 
-    final wallet = data['wallet'];
-    if (wallet is List && wallet.isNotEmpty) {
-      return (wallet[0]['balance'] ?? 0).toDouble();
-    } else if (wallet is Map) {
-      return (wallet['balance'] ?? 0).toDouble();
-    }
-    return 0.0;
+  @override
+  void initState() {
+    super.initState();
+    _controller = WalletBalanceController(phone: widget.phone);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -45,14 +42,14 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
             stops: [0.0, 1.0],
           ),
         ),
-        child: FutureBuilder<double>(
-          future: getWalletBalance(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+        child: ListenableBuilder(
+          listenable: _controller,
+          builder: (context, child) {
+            if (_controller.isLoading) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (snapshot.hasError) {
+            if (_controller.errorMessage != null) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -63,11 +60,11 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
                       color: Colors.red,
                     ),
                     const SizedBox(height: 16),
-                    Text("เกิดข้อผิดพลาด: ${snapshot.error}"),
+                    Text("เกิดข้อผิดพลาด: ${_controller.errorMessage}"),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        setState(() {});
+                        _controller.fetchBalance();
                       },
                       child: const Text("ลองอีกครั้ง"),
                     ),
@@ -76,7 +73,7 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
               );
             }
 
-            final balance = snapshot.data ?? 0.0;
+            final balance = _controller.balance;
 
             return Padding(
               padding: const EdgeInsets.all(20.0),
@@ -183,7 +180,7 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
                       );
                       if (result == true) {
                         // Refresh the balance if withdrawal was successful
-                        setState(() {});
+                        _controller.fetchBalance();
                       }
                     },
                   ),

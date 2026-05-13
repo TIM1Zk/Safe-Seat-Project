@@ -1,20 +1,16 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mobile_project/core/network/api_service.dart';
 import '../models/user_dto.dart';
 
 class AuthService {
-  final SupabaseClient _client = Supabase.instance.client;
-
   Future<UserDto?> login(String username, String password) async {
     try {
-      final data = await _client
-          .from('user')
-          .select()
-          .eq('username', username)
-          .eq('password', password)
-          .maybeSingle();
+      final response = await ApiService.post('/auth/login', data: {
+        'username': username,
+        'password': password,
+      });
       
-      if (data != null) {
-        return UserDto.fromJson(data);
+      if (response.statusCode == 200 && response.data != null) {
+        return UserDto.fromJson(response.data);
       }
       return null;
     } catch (e) {

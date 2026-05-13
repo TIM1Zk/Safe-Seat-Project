@@ -30,7 +30,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  supabase_flutter: ^2.8.0
   cupertino_icons: ^1.0.8
   dio: ^5.7.0
   intl: ^0.20.2
@@ -86,5 +85,4 @@ flutter:
   #         weight: 700
   #
   # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
-supabase_flutter: ^2.0.0
+  # see https://flutter.dev/to/font-from-package

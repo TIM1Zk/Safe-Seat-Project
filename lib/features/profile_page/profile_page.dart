@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_project/features/edit_profile_page/edit_profile_page.dart';
 import 'package:mobile_project/features/view_wallet_balance/view_wallet_balance.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mobile_project/core/network/api_service.dart';
 
 class ProfilePage extends StatelessWidget {
   final String phone;
@@ -10,11 +10,15 @@ class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key, required this.phone});
 
   Future<Map<String, dynamic>?> getProfileData() async {
-    return await Supabase.instance.client
-        .from('profiles')
-        .select()
-        .eq('username', phone)
-        .maybeSingle();
+    try {
+      final response = await ApiService.get('/users/$phone');
+      if (response.statusCode == 200) {
+        return response.data;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   @override
@@ -185,14 +189,14 @@ class ProfilePage extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton.icon(
-                          onPressed: () async {
-                            await Supabase.instance.client.auth.signOut();
-                            if (context.mounted)
+                          onPressed: () {
+                            if (context.mounted) {
                               Navigator.pushNamedAndRemoveUntil(
                                 context,
                                 '/login',
                                 (route) => false,
                               );
+                            }
                           },
                           icon: const Icon(
                             Icons.logout_rounded,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mobile_project/core/network/api_service.dart';
 
 class WithdrawWalletPage extends StatefulWidget {
   final String phone;
@@ -25,20 +25,12 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
 
   Future<void> _fetchBalance() async {
     try {
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select('wallet!inner(balance)')
-          .eq('username', widget.phone)
-          .single();
-
-      final wallet = data['wallet'];
-      setState(() {
-        if (wallet is List && wallet.isNotEmpty) {
-          _currentBalance = (wallet[0]['balance'] ?? 0).toDouble();
-        } else if (wallet is Map) {
-          _currentBalance = (wallet['balance'] ?? 0).toDouble();
-        }
-      });
+      final response = await ApiService.get('/wallets/${widget.phone}/balance');
+      if (response.statusCode == 200) {
+        setState(() {
+          _currentBalance = (response.data['balance'] ?? 0).toDouble();
+        });
+      }
     } catch (e) {
       debugPrint('Error fetching balance: $e');
     }
@@ -65,38 +57,18 @@ class _WithdrawWalletPageState extends State<WithdrawWalletPage> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Get profile and wallet ID
-      final profileData = await Supabase.instance.client
-          .from('profiles')
-          .select('id, wallet!inner(id)')
-          .eq('username', widget.phone)
-          .single();
+      final response = await ApiService.post('/wallets/${widget.phone}/withdraw', data: {'amount': amount});
 
-      final profileId = profileData['id'];
-      final walletId = (profileData['wallet'] as List)[0]['id'];
-
-      // 2. Perform withdrawal (Update balance)
-      await Supabase.instance.client
-          .from('wallet')
-          .update({'balance': _currentBalance - amount})
-          .eq('id', walletId);
-
-      // 3. Record transaction
-      await Supabase.instance.client.from('transactions').insert({
-        'profile_id': profileId,
-        'amount': amount,
-        'type': 'withdraw',
-        'status': 'success',
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ถอนเงินสำเร็จ!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context, true); // Return true to indicate success
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('ถอนเงินสำเร็จ!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, true); // Return true to indicate success
+        }
       }
     } catch (e) {
       if (mounted) {
