@@ -3,6 +3,9 @@ const UserController = require('../controllers/userController');
 
 const router = express.Router();
 
+// Route to search users
+router.get('/', UserController.searchUsers);
+
 // Route to get a user profile by username (phone)
 router.get('/:username', UserController.getProfile);
 

@@ -3,8 +3,9 @@ import 'package:mobile_project/features/profile_page/profile_page.dart';
 import 'package:mobile_project/features/edit_profile_page/controllers/edit_profile_controller.dart';
 
 class EditProfilePage extends StatefulWidget {
-  final String phone;
-  const EditProfilePage({super.key, required this.phone});
+  final String username;
+  final String phoneno;
+  const EditProfilePage({super.key, required this.username, required this.phoneno});
 
   @override
   State<EditProfilePage> createState() => _EditProfilePageState();
@@ -24,7 +25,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    _controller = EditProfileController(phone: widget.phone);
+    _controller = EditProfileController(phone: widget.username);
     _controller.addListener(_onControllerUpdate);
   }
 
@@ -89,7 +90,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => ProfilePage(phone: widget.phone),
+          builder: (context) => ProfilePage(
+            username: widget.username,
+            phoneno: widget.phoneno,
+          ),
         ),
       );
     }

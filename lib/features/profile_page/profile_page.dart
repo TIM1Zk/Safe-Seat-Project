@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_project/features/edit_profile_page/edit_profile_page.dart';
 import 'package:mobile_project/features/view_wallet_balance/view_wallet_balance.dart';
+import 'package:mobile_project/features/searchbuddy_page/searchbuddy_page.dart';
 import 'package:mobile_project/core/network/api_service.dart';
 
 class ProfilePage extends StatelessWidget {
-  final String phone;
-
-  const ProfilePage({super.key, required this.phone});
+  final String username;
+  final String phoneno;
+  const ProfilePage({super.key, required this.username, required this.phoneno});
 
   Future<Map<String, dynamic>?> getProfileData() async {
     try {
-      final response = await ApiService.get('/users/$phone');
+      final response = await ApiService.get('/users/$username');
       if (response.statusCode == 200) {
         return response.data;
       }
@@ -40,83 +41,92 @@ class ProfilePage extends StatelessWidget {
             final data = snapshot.data!;
 
             return SingleChildScrollView(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    // --- Header Section ---
-                    Stack(
-                      alignment: Alignment.center,
-                      clipBehavior: Clip.none,
-                      children: [
-                        // 1. Background
-                        Container(
-                          height: 220,
-                          width: double.infinity,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF7CE5FF),
-                            borderRadius: BorderRadius.only(
-                              bottomLeft: Radius.circular(50),
-                              bottomRight: Radius.circular(50),
-                            ),
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  // --- Header Section ---
+                  Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      // 1. Background
+                      Container(
+                        height: 220,
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF7CE5FF),
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(50),
+                            bottomRight: Radius.circular(50),
                           ),
                         ),
-                        // 2. Profile Image
-                        Positioned(
-                          bottom: -50,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 10,
-                                  offset: Offset(0, 5),
+                      ),
+                      // 2. Profile Image
+                      Positioned(
+                        bottom: -50,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundColor: const Color(0xFF1E1E1E),
+                            backgroundImage: data['regisimagepath'] != null &&
+                                    data['regisimagepath'].toString().isNotEmpty
+                                ? NetworkImage(data['regisimagepath'].toString())
+                                : null,
+                            child: data['regisimagepath'] == null ||
+                                    data['regisimagepath'].toString().isEmpty
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 70,
+                                    color: Color(0xFF7CE5FF),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                      // 3. Back Button & Title (วางไว้บนสุดเสมอ)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const SizedBox(
+                                  width: 48,
+                                ), // Space to maintain alignment
+                                const Text(
+                                  "ข้อมูลส่วนตัว",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
+                                const SizedBox(width: 48),
                               ],
                             ),
-                            child: const CircleAvatar(
-                              radius: 60,
-                              backgroundColor: Color(0xFF1E1E1E),
-                              child: Icon(
-                                Icons.person,
-                                size: 70,
-                                color: Color(0xFF7CE5FF),
-                              ),
-                            ),
                           ),
                         ),
-                        // 3. Back Button & Title (วางไว้บนสุดเสมอ)
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          child: SafeArea(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 8,
-                                ),
-                                child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const SizedBox(width: 48), // Space to maintain alignment
-                                    const Text(
-                                      "ข้อมูลส่วนตัว",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 48),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
 
                   const SizedBox(height: 60),
                   Text(
@@ -135,19 +145,23 @@ class ProfilePage extends StatelessWidget {
                     child: Column(
                       children: [
                         _buildInfoTile(
-                          icon: Icons.phone_android_rounded,
-                          label: "เบอร์โทรศัพท์",
-                          value: data['username'] ?? phone,
+                          icon: Icons.person_2_rounded,
+                          label: "ชื่อผู้ใช้",
+                          value: (data['username'] ?? username).toString(),
                         ),
                         _buildInfoTile(
-                          icon: Icons.cake_rounded,
-                          label: "วันเกิด",
-                          value: data['birthday'] ?? "ไม่ระบุ",
+                          icon: Icons.phone_android_rounded,
+                          label: "เบอร์โทรศัพท์",
+                          value: (data['phoneno'] ?? phoneno).toString(),
                         ),
                         _buildInfoTile(
                           icon: Icons.wc_rounded,
                           label: "เพศ",
-                          value: data['gender'] ?? "ไม่ระบุ",
+                          value: data['gender'] == 1 || data['gender'] == '1'
+                              ? 'ชาย'
+                              : data['gender'] == 2 || data['gender'] == '2'
+                              ? 'ผู้หญิง'
+                              : (data['gender'] ?? "ไม่ระบุ").toString(),
                         ),
                       ],
                     ),
@@ -169,7 +183,20 @@ class ProfilePage extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  WalletBalancePage(phone: phone),
+                                  WalletBalancePage(username: username),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildPremiumButton(
+                          context: context,
+                          icon: Icons.person_search_rounded,
+                          label: "ค้นหาเพื่อนร่วมทาง (Buddy)",
+                          isGradient: true,
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SearchbuddyPage(currentUsername: username),
                             ),
                           ),
                         ),
@@ -182,8 +209,10 @@ class ProfilePage extends StatelessWidget {
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  EditProfilePage(phone: phone),
+                              builder: (context) => EditProfilePage(
+                                username: username,
+                                phoneno: phoneno,
+                              ),
                             ),
                           ),
                         ),

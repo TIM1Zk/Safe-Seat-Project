@@ -4,9 +4,9 @@ import 'package:mobile_project/features/view_wallet_history/view_wallet_history.
 import 'package:mobile_project/features/view_wallet_balance/controllers/wallet_balance_controller.dart';
 
 class WalletBalancePage extends StatefulWidget {
-  final String phone;
+  final String username;
 
-  const WalletBalancePage({super.key, required this.phone});
+  const WalletBalancePage({super.key, required this.username});
 
   @override
   State<WalletBalancePage> createState() => _WalletBalancePageState();
@@ -18,7 +18,7 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
   @override
   void initState() {
     super.initState();
-    _controller = WalletBalanceController(phone: widget.phone);
+    _controller = WalletBalanceController(phone: widget.username);
   }
 
   @override
@@ -161,7 +161,7 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                              WalletHistoryPage(phone: widget.phone),
+                              WalletHistoryPage(phone: widget.username),
                         ),
                       );
                     },
@@ -175,7 +175,7 @@ class _WalletBalancePageState extends State<WalletBalancePage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                              WithdrawWalletPage(phone: widget.phone),
+                              WithdrawWalletPage(phone: widget.username),
                         ),
                       );
                       if (result == true) {

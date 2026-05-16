@@ -14,15 +14,15 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
 
 ## ✨ Key Features
 
-- **🔐 Secure Authentication:** Login system connected to the Node.js API.
-- **👤 Profile Management:**
-  - View user details (Email, Username).
-  - Edit profile information through API endpoints.
-- **💰 Wallet System:**
-  - **Real-time Balance:** Fetch latest wallet balance via API.
-  - **Transaction History:** Detailed logs of all wallet activities.
-  - **Secure Withdrawal:** Dedicated backend flow for processing withdrawals and recording transactions.
-- **🏗️ MVC Architecture:** Clean separation of concerns (Models, Views, Controllers) on both Frontend and Backend.
+- **🔐 Secure Authentication:** Login restricted to approved users only (`registerstatus = 'อนุมัติแล้ว'`).
+- **🤝 Buddy Request System:** 
+  - **Location-Aware Search:** Find nearby buddies based on real-time location.
+  - **Real-time Requests:** Send/Receive buddy requests with a 5-minute auto-expiry rule.
+  - **Notification Badge:** Instant visual indicators for new pending requests.
+  - **My Buddy Dashboard:** View current active buddy details, chat/call options, and team management (Leave Team).
+- **👤 Profile Management:** View and edit user profile details through API endpoints.
+- **💰 Wallet System:** Real-time balance, transaction history, and secure withdrawal flow.
+- **🏗️ MVC Architecture:** Clean separation of concerns across the full stack.
 
 ---
 
@@ -34,12 +34,12 @@ lib/
 ├── core/
 │   └── network/              # API Service (Dio Client)
 ├── features/
-│   ├── edit_profile_page/    # Profile update forms (MVC)
+│   ├── searchbuddy_page/     # Buddy search & Request notifications
+│   ├── Mybuddy_page/         # Active buddy details & Team management
 │   ├── login_page/           # Authentication flow
 │   ├── profile_page/         # User profile view
-│   ├── view_wallet_balance/  # Dashboard for wallet (MVC)
-│   ├── view_wallet_history/  # Transaction logs (MVC)
-│   └── withdraw_wallet_page/ # Withdrawal interface (MVC)
+│   ├── view_wallet_balance/  # Dashboard for wallet
+│   └── withdraw_wallet_page/ # Withdrawal interface
 └── main.dart                 # App entry point & configuration
 ```
 
@@ -47,12 +47,10 @@ lib/
 ```text
 backend/
 ├── src/
-│   ├── controllers/          # Request handlers & Business logic
-│   ├── models/               # Data access layer (Supabase JS)
-│   ├── routes/               # Express API routes
+│   ├── controllers/          # buddyRequestController.js, userController.js, etc.
+│   ├── models/               # buddyRequestModel.js, userModel.js, authModel.js
+│   ├── routes/               # buddyRequestRoutes.js, userRoutes.js, etc.
 │   └── index.js              # Express app entry point
-├── package.json              # Node dependencies
-└── .env                      # Environment variables
 ```
 
 ---

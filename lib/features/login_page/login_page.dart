@@ -13,20 +13,20 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  late final TextEditingController phonenumbercontroller;
+  late final TextEditingController usernamecontroller;
   late final TextEditingController passwordcontroller;
   bool isloading = false;
 
   @override
   void initState() {
     super.initState();
-    phonenumbercontroller = TextEditingController();
+    usernamecontroller = TextEditingController();
     passwordcontroller = TextEditingController();
   }
 
   @override
   void dispose() {
-    phonenumbercontroller.dispose();
+    usernamecontroller.dispose();
     passwordcontroller.dispose();
     super.dispose();
   }
@@ -38,7 +38,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final data = await _authService.login(
-        phonenumbercontroller.text.trim(),
+        usernamecontroller.text.trim(),
         passwordcontroller.text.trim(),
       );
 
@@ -48,12 +48,15 @@ class _LoginPageState extends State<LoginPage> {
             context,
             MaterialPageRoute(
               builder: (context) =>
-                  ProfilePage(phone: phonenumbercontroller.text.trim()),
+                  ProfilePage(
+                    username: data.username,
+                    phoneno: data.phoneno,
+                  ),
             ),
           );
         }
       } else {
-        throw 'หมายเลขโทรศัพท์หรือรหัสผ่านไม่ถูกต้อง';
+        throw 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
       }
     } catch (e) {
       if (mounted) {
@@ -212,11 +215,11 @@ class _LoginPageState extends State<LoginPage> {
                             child: Column(
                               children: [
                                 _buildGlassField(
-                                  controller: phonenumbercontroller,
-                                  label: "เบอร์โทรศัพท์มือถือ",
-                                  icon: Icons.phone_android_rounded,
+                                  controller: usernamecontroller,
+                                  label: "ชื่อผู้ใช้",
+                                  icon: Icons.person_outline_rounded,
                                   accentColor: accentColor,
-                                  keyboardType: TextInputType.phone,
+                                  keyboardType: TextInputType.text,
                                 ),
                                 const SizedBox(height: 20),
                                 _buildGlassField(
