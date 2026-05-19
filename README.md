@@ -15,11 +15,16 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
 ## ✨ Key Features
 
 - **🔐 Secure Authentication:** Login restricted to approved users only (`registerstatus = 'อนุมัติแล้ว'`).
-- **🤝 Buddy Request System:** 
+- **🤝 Synced Buddy Request & Team System:** 
   - **Location-Aware Search:** Find nearby buddies based on real-time location.
   - **Real-time Requests:** Send/Receive buddy requests with a 5-minute auto-expiry rule.
   - **Notification Badge:** Instant visual indicators for new pending requests.
-  - **My Buddy Dashboard:** View current active buddy details, chat/call options, and team management (Leave Team).
+  - **My Buddy Dashboard:** View current active buddy details, chat/call options, and team management (Leave Team) with instant, real-time UI state synchronization.
+  - **Robust Fkey Database Handling:** Safely handles database constraints when leaving teams by dynamically resetting `buddy_team_id` references on members before deletion.
+- **📋 Driver Problem & Expense Reporting:**
+  - **Multi-Status Filter:** View and filter submitted reports by status: "ทั้งหมด" (All), "กำลังดำเนินการ" (In Progress), and "เสร็จสิ้น" (Completed).
+  - **Detailed Report Sheet:** Interactive modal sheets showing report details, date, status, custom category icons, and receipt images.
+  - **Team-based API Querying:** Intelligently joins and matches reports to drivers based on their current `buddy_team_id` context.
 - **👤 Profile Management:** View and edit user profile details through API endpoints.
 - **💰 Wallet System:** Real-time balance, transaction history, and secure withdrawal flow.
 - **🏗️ MVC Architecture:** Clean separation of concerns across the full stack.
@@ -36,10 +41,12 @@ lib/
 ├── features/
 │   ├── searchbuddy_page/     # Buddy search & Request notifications
 │   ├── Mybuddy_page/         # Active buddy details & Team management
+│   ├── Listdriverreport_page/# Driver problem & expense reporting interface
 │   ├── login_page/           # Authentication flow
 │   ├── profile_page/         # User profile view
 │   ├── view_wallet_balance/  # Dashboard for wallet
 │   └── withdraw_wallet_page/ # Withdrawal interface
+│   └── edit_profile_page/    # Edit profile details
 └── main.dart                 # App entry point & configuration
 ```
 
@@ -47,9 +54,9 @@ lib/
 ```text
 backend/
 ├── src/
-│   ├── controllers/          # buddyRequestController.js, userController.js, etc.
-│   ├── models/               # buddyRequestModel.js, userModel.js, authModel.js
-│   ├── routes/               # buddyRequestRoutes.js, userRoutes.js, etc.
+│   ├── controllers/          # buddyRequestController.js, driverReportController.js, userController.js, etc.
+│   ├── models/               # buddyRequestModel.js, driverReportModel.js, userModel.js, authModel.js
+│   ├── routes/               # buddyRequestRoutes.js, driverReportRoutes.js, userRoutes.js, etc.
 │   └── index.js              # Express app entry point
 ```
 

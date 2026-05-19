@@ -50,6 +50,16 @@ class BuddyRequestModel {
 
   // 4. ปฏิเสธหรือลบคำขอ
   static async removeRequest(requestId) {
+    // ก่อนที่จะลบ buddyteam ให้เคลียร์ buddy_team_id ในตาราง driver ที่อ้างอิงถึงทีมนี้ก่อน
+    const { error: updateError } = await supabase
+      .from('driver')
+      .update({ buddy_team_id: null })
+      .eq('buddy_team_id', requestId);
+
+    if (updateError) {
+      console.error("Error setting driver buddy_team_id to null:", updateError);
+    }
+
     const { error } = await supabase
       .from('buddyteam')
       .delete()
@@ -61,11 +71,14 @@ class BuddyRequestModel {
 
   // 5. ดูคู่หูปัจจุบัน
   static async getActiveBuddy(userId) {
+    const cleanUserId = userId.toLowerCase();
     const { data, error } = await supabase
       .from('buddyteam')
       .select('*, leader:leaderid(username, firstname, lastname, regisimagepath), follower:followerid(username, firstname, lastname, regisimagepath)')
-      .or(`leaderid.eq.${userId},followerid.eq.${userId}`)
+      .or(`leaderid.eq.${cleanUserId},followerid.eq.${cleanUserId}`)
       .eq('teamstatus', 'Ready')
+      .order('buddyteamid', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error) throw error;

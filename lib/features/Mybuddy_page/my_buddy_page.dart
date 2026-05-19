@@ -37,9 +37,14 @@ class _MyBuddyPageState extends State<MyBuddyPage> {
   Future<void> _leaveTeam() async {
     if (_buddyTeam == null) return;
     try {
-      final response = await ApiService.put('/buddy-team/reject/${_buddyTeam!['buddy_team_id']}', data: {});
+      final response = await ApiService.put('/buddy-team/reject/${_buddyTeam!['buddyteamid']}', data: {});
       if (response.statusCode == 200) {
-        if (mounted) Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+          setState(() {
+            _buddyTeam = null;
+          });
+        }
       }
     } catch (e) {
       debugPrint("Error leaving team: $e");
@@ -54,7 +59,7 @@ class _MyBuddyPageState extends State<MyBuddyPage> {
     // หาว่าใครคือคู่หู (คนที่ไม่ใช่เรา)
     Map<String, dynamic>? buddyProfile;
     if (_buddyTeam != null) {
-      if (_buddyTeam!['leaderid'] == widget.currentUsername) {
+      if (_buddyTeam!['leaderid'].toString().toLowerCase() == widget.currentUsername.toLowerCase()) {
         buddyProfile = _buddyTeam!['follower'];
       } else {
         buddyProfile = _buddyTeam!['leader'];

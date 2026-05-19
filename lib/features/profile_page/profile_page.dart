@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:mobile_project/features/edit_profile_page/edit_profile_page.dart';
 import 'package:mobile_project/features/view_wallet_balance/view_wallet_balance.dart';
 import 'package:mobile_project/features/searchbuddy_page/searchbuddy_page.dart';
+import 'package:mobile_project/features/Listdriverreport_page/Listdriverreport_page.dart';
 import 'package:mobile_project/core/network/api_service.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -197,6 +198,19 @@ class ProfilePage extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) => SearchbuddyPage(currentUsername: username),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildPremiumButton(
+                          context: context,
+                          icon: Icons.report_problem_rounded,
+                          label: "รายงานปัญหาของฉัน",
+                          isGradient: true,
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ListDriverReportPage(username: username),
                             ),
                           ),
                         ),
