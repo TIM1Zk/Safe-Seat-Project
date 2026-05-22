@@ -1,3 +1,4 @@
+import 'package:mobile_project/core/utils/image_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_project/features/edit_profile_page/edit_profile_page.dart';
@@ -80,12 +81,9 @@ class ProfilePage extends StatelessWidget {
                           child: CircleAvatar(
                             radius: 60,
                             backgroundColor: const Color(0xFF1E1E1E),
-                            backgroundImage: data['regisimagepath'] != null &&
-                                    data['regisimagepath'].toString().isNotEmpty
-                                ? NetworkImage(data['regisimagepath'].toString())
-                                : null,
-                            child: data['regisimagepath'] == null ||
-                                    data['regisimagepath'].toString().isEmpty
+                            backgroundImage: NetworkImage(ImageUtils.getProfileImageUrl(data['regisimagepath'])),
+                            onBackgroundImageError: (_, __) {},
+                            child: ImageUtils.getProfileImageUrl(data['regisimagepath']).contains('pravatar')
                                 ? const Icon(
                                     Icons.person,
                                     size: 70,

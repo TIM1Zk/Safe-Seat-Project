@@ -27,6 +27,8 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
   - **Team-based API Querying:** Intelligently joins and matches reports to drivers based on their current `buddy_team_id` context.
 - **👤 Profile Management:** View and edit user profile details through API endpoints.
 - **💰 Wallet System:** Real-time balance, transaction history, and secure withdrawal flow.
+- **📍 Location Tracking:** Automatic capture and storage of driver's GPS coordinates upon login.
+- **🖼️ Image Optimization:** Dynamic JSON parsing utility for resilient profile picture loading across the app.
 - **🏗️ MVC Architecture:** Clean separation of concerns across the full stack.
 
 ---

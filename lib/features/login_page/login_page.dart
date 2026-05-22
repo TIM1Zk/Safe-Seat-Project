@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile_project/features/profile_page/profile_page.dart';
 import 'data/services/auth_service.dart';
 
+import 'package:geolocator/geolocator.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -37,9 +39,30 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isloading = true);
 
     try {
+      double? lat;
+      double? lng;
+      try {
+        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (serviceEnabled) {
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+            Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+            lat = position.latitude;
+            lng = position.longitude;
+          }
+        }
+      } catch (e) {
+        debugPrint("Could not get location: $e");
+      }
+
       final data = await _authService.login(
         usernamecontroller.text.trim(),
         passwordcontroller.text.trim(),
+        lat,
+        lng,
       );
 
       if (data != null) {

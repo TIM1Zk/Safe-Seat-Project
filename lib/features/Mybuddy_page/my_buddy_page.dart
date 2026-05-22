@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:mobile_project/core/utils/image_utils.dart';
 import 'package:flutter/material.dart';
 import '../../core/network/api_service.dart';
 
@@ -12,41 +14,101 @@ class MyBuddyPage extends StatefulWidget {
 class _MyBuddyPageState extends State<MyBuddyPage> {
   Map<String, dynamic>? _buddyTeam;
   bool _isLoading = true;
+  Timer? _pollingTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchActiveBuddy();
+    // Poll every 5 seconds to check if the other person left the team
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _fetchActiveBuddy();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchActiveBuddy() async {
     try {
       final response = await ApiService.get('/buddy-team/active/${widget.currentUsername}');
       if (response.statusCode == 200) {
-        setState(() {
-          _buddyTeam = response.data;
-          _isLoading = false;
-        });
+        if (response.data == null || 
+            response.data.toString().isEmpty || 
+            response.data.toString() == "null" ||
+            (response.data is Map && (response.data as Map).isEmpty)) {
+          // If we previously had a team and now we don't, it means the other person left
+          if (_buddyTeam != null && mounted) {
+            _pollingTimer?.cancel();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('บัดดี้ของคุณออกจากทีมแล้ว')),
+            );
+            Navigator.pop(context); // Go back to SearchBuddyPage
+          } else if (mounted) {
+            setState(() {
+              _buddyTeam = null;
+              _isLoading = false;
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              _buddyTeam = response.data;
+              _isLoading = false;
+            });
+          }
+        }
       }
     } catch (e) {
       debugPrint("Error fetching active buddy: $e");
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _leaveTeam() async {
     if (_buddyTeam == null) return;
+    
+    // Pop the confirmation dialog first
+    Navigator.pop(context);
+
+    // Show a loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
     try {
       final response = await ApiService.put('/buddy-team/reject/${_buddyTeam!['buddyteamid']}', data: {});
+      
+      // Pop the loading dialog
+      if (mounted) Navigator.pop(context);
+
       if (response.statusCode == 200) {
         if (mounted) {
+          _pollingTimer?.cancel();
+          // Pop the MyBuddyPage to return to SearchBuddyPage
           Navigator.pop(context);
-          setState(() {
-            _buddyTeam = null;
-          });
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to leave team: ${response.statusCode}')),
+          );
         }
       }
     } catch (e) {
+      // Pop the loading dialog
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error leaving team: $e')),
+        );
+      }
       debugPrint("Error leaving team: $e");
     }
   }
@@ -120,7 +182,8 @@ class _MyBuddyPageState extends State<MyBuddyPage> {
               children: [
                 CircleAvatar(
                   radius: 60,
-                  backgroundImage: NetworkImage(profile['regisimagepath'] ?? 'https://i.pravatar.cc/150'),
+                  backgroundImage: NetworkImage(ImageUtils.getProfileImageUrl(profile['regisimagepath'])),
+                  onBackgroundImageError: (_, __) {},
                 ),
                 const SizedBox(height: 20),
                 Text(

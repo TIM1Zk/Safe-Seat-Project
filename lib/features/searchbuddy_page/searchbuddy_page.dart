@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:mobile_project/core/utils/image_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mobile_project/core/network/api_service.dart';
@@ -54,37 +55,44 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
     }
   }
 
-  Future<void> _acceptRequest(int requestId) async {
+  Future<bool> _acceptRequest(int requestId) async {
     try {
       final response = await ApiService.put('/buddy-team/accept/$requestId', data: {});
       if (response.statusCode == 200) {
-        _fetchPendingRequests();
+        await _fetchPendingRequests();
         _fetchBuddies();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Accepted buddy request!')),
           );
+          // ปิด Modal และพาไปหน้า MyBuddyPage อัตโนมัติ
+          Navigator.pop(context);
+          Navigator.push(context, MaterialPageRoute(builder: (context) => MyBuddyPage(currentUsername: widget.currentUsername))).then((_) => _fetchPendingRequests());
         }
+        return true;
       }
     } catch (e) {
       debugPrint("Error accepting request: $e");
     }
+    return false;
   }
 
-  Future<void> _rejectRequest(int requestId) async {
+  Future<bool> _rejectRequest(int requestId) async {
     try {
       final response = await ApiService.put('/buddy-team/reject/$requestId', data: {});
       if (response.statusCode == 200) {
-        _fetchPendingRequests();
+        await _fetchPendingRequests();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Rejected buddy request')),
           );
         }
+        return true;
       }
     } catch (e) {
       debugPrint("Error rejecting request: $e");
     }
+    return false;
   }
 
   Future<Position?> _determinePosition() async {
@@ -131,15 +139,18 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
                           final req = _pendingRequests[index];
                           final sender = req['sender'] ?? {};
                           return ListTile(
-                            leading: CircleAvatar(backgroundImage: NetworkImage(sender['regisimagepath'] ?? 'https://i.pravatar.cc/150')),
+                            leading: CircleAvatar(
+                              backgroundImage: NetworkImage(ImageUtils.getProfileImageUrl(sender['regisimagepath'])),
+                              onBackgroundImageError: (_, __) {},
+                            ),
                             title: Text(sender['username'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
                             subtitle: const Text("Wants to be your buddy", style: TextStyle(color: Colors.white54, fontSize: 12)),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(icon: const Icon(Icons.check_circle, color: Colors.green), onPressed: () async { await _acceptRequest(req['buddyteamid']); setModalState(() {}); if (_pendingRequests.isEmpty) Navigator.pop(context); }),
-                                IconButton(icon: const Icon(Icons.cancel, color: Colors.red), onPressed: () async { await _rejectRequest(req['buddyteamid']); setModalState(() {}); if (_pendingRequests.isEmpty) Navigator.pop(context); }),
-                              ],
+                                children: [
+                                  IconButton(icon: const Icon(Icons.check_circle, color: Colors.green), onPressed: () async { await _acceptRequest(req['buddyteamid']); }),
+                                  IconButton(icon: const Icon(Icons.cancel, color: Colors.red), onPressed: () async { await _rejectRequest(req['buddyteamid']); setModalState(() {}); if (_pendingRequests.isEmpty) Navigator.pop(context); }),
+                                ],
                             ),
                           );
                         },
@@ -160,11 +171,11 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
         if (_selectedCategory != 'All') 'category': _selectedCategory.toLowerCase(),
         'exclude': widget.currentUsername,
       };
-      if (_selectedCategory == 'Nearby') {
-        final position = await _determinePosition();
-        if (position != null) {
-          params['lat'] = position.latitude.toString();
-          params['lng'] = position.longitude.toString();
+      final position = await _determinePosition();
+      if (position != null) {
+        params['lat'] = position.latitude.toString();
+        params['lng'] = position.longitude.toString();
+        if (_selectedCategory == 'Nearby') {
           params['radius'] = '2';
         }
       }
@@ -345,7 +356,7 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
 
   Widget _buildBuddyCard(Map<String, dynamic> buddy, ColorScheme colorScheme) {
     final name = buddy['firstname'] != null ? "${buddy['firstname']} ${buddy['lastname'] ?? ''}" : buddy['username'] ?? 'Unknown';
-    final image = buddy['regisimagepath'] ?? 'https://i.pravatar.cc/150';
+    final image = ImageUtils.getProfileImageUrl(buddy['regisimagepath']);
     final distance = buddy['distance'] ?? 'Nearby';
 
     return Container(
