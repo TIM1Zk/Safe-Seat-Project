@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:mobile_project/core/utils/session_manager.dart';
+import 'package:mobile_project/features/profile_page/profile_page.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -12,12 +14,39 @@ class _LoadingScreenState extends State<LoadingScreen> {
   @override
   void initState() {
     super.initState();
-    // Navigate to Login Page after 3 seconds
-    Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    // แสดงหน้าจอโหลดเดอร์อย่างน้อย 3 วินาทีเพื่อให้ดูพรีเมียม
+    await Future.delayed(const Duration(seconds: 3));
+    
+    if (!mounted) return;
+
+    // ตรวจสอบว่าเคยเข้าสู่ระบบไว้หรือไม่
+    final isLoggedIn = await SessionManager.isLoggedIn();
+    if (isLoggedIn) {
+      final username = await SessionManager.getUsername();
+      final phoneno = await SessionManager.getPhoneNo();
+      
+      if (mounted && username != null && phoneno != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfilePage(
+              username: username,
+              phoneno: phoneno,
+            ),
+          ),
+        );
+        return;
       }
-    });
+    }
+
+    // หากยังไม่เคยเข้าสู่ระบบ ให้นำไปหน้า Login
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
   @override

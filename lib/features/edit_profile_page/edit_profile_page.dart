@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_project/features/profile_page/profile_page.dart';
 import 'package:mobile_project/features/edit_profile_page/controllers/edit_profile_controller.dart';
+import 'package:mobile_project/core/utils/session_manager.dart';
 
 class EditProfilePage extends StatefulWidget {
   final String username;
@@ -13,12 +14,7 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _birthdayController = TextEditingController();
-
-  String? _selectedGender;
-  final List<String> _genderOptions = ['ชาย', 'หญิง', 'LGBTQ+', 'ไม่ระบุ'];
+  final TextEditingController _phoneController = TextEditingController();
 
   late EditProfileController _controller;
 
@@ -33,66 +29,54 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void dispose() {
     _controller.removeListener(_onControllerUpdate);
     _controller.dispose();
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _birthdayController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
   void _onControllerUpdate() {
-    if (_controller.userProfile != null && _firstNameController.text.isEmpty) {
-      // Initialize text fields only once when data is loaded
-      _firstNameController.text = _controller.userProfile!.firstName;
-      _lastNameController.text = _controller.userProfile!.lastName;
-      _birthdayController.text = _controller.userProfile!.birthday;
-      if (_genderOptions.contains(_controller.userProfile!.gender)) {
-        _selectedGender = _controller.userProfile!.gender;
-      }
+    if (_controller.userProfile != null && _phoneController.text.isEmpty) {
+      // โหลดข้อมูลเบอร์โทรปัจจุบันมาใส่ในช่องกรอก
+      _phoneController.text = _controller.userProfile!.phoneNo;
     }
     
     if (_controller.errorMessage != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_controller.errorMessage!)),
+        SnackBar(
+          content: Text(_controller.errorMessage!),
+          backgroundColor: Colors.redAccent,
+        ),
       );
-      // clear error to prevent multiple snackbars
       _controller.errorMessage = null; 
-    }
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        _birthdayController.text = "${picked.day}/${picked.month}/${picked.year}";
-      });
     }
   }
 
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final newPhoneNo = _phoneController.text.trim();
+
     final success = await _controller.updateProfile(
-      firstName: _firstNameController.text,
-      lastName: _lastNameController.text,
-      birthday: _birthdayController.text,
-      gender: _selectedGender ?? '',
+      phoneNo: newPhoneNo,
     );
 
     if (success && mounted) {
+      // อัปเดตเบอร์โทรศัพท์ในเซสชันเครื่องด้วยเพื่อให้ดึงข้อมูลถูกต้องในครั้งถัดไป
+      await SessionManager.saveSession(widget.username, newPhoneNo);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("บันทึกข้อมูลเรียบร้อยแล้ว!")),
+        SnackBar(
+          content: const Text("บันทึกข้อมูลเบอร์โทรศัพท์เรียบร้อยแล้ว!"),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
+      
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => ProfilePage(
             username: widget.username,
-            phoneno: widget.phoneno,
+            phoneno: newPhoneNo,
           ),
         ),
       );
@@ -105,12 +89,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("แก้ไขข้อมูลส่วนตัว"),
+        title: const Text("แก้ไขเบอร์โทรศัพท์"),
       ),
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
-          if (_controller.isLoading) {
+          if (_controller.isLoading && _phoneController.text.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -124,7 +108,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: Colors.grey[200]!),
+                      side: BorderSide(color: Colors.white.withOpacity(0.05)),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
@@ -132,7 +116,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            "ข้อมูลเบื้องต้น",
+                            "ข้อมูลส่วนตัวที่แก้ไขได้",
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -141,45 +125,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           ),
                           const SizedBox(height: 20),
                           _buildTextField(
-                            controller: _firstNameController,
-                            label: "ชื่อ",
-                            icon: Icons.person_outline_rounded,
-                            validator: (value) => value!.isEmpty ? "กรุณาระบุชื่อ" : null,
-                          ),
-                          const SizedBox(height: 15),
-                          _buildTextField(
-                            controller: _lastNameController,
-                            label: "นามสกุล",
-                            icon: Icons.person_outline_rounded,
-                            validator: (value) => value!.isEmpty ? "กรุณาระบุนามสกุล" : null,
-                          ),
-                          const SizedBox(height: 15),
-                          TextFormField(
-                            controller: _birthdayController,
-                            readOnly: true,
-                            onTap: () => _selectDate(context),
-                            decoration: _buildInputDecoration(
-                              "วันเกิด",
-                              Icons.cake_outlined,
-                              "กดเพื่อเลือกวันที่",
-                            ),
-                          ),
-                          const SizedBox(height: 15),
-                          DropdownButtonFormField<String>(
-                            value: _selectedGender,
-                            decoration: _buildInputDecoration("เพศ", Icons.wc_outlined, null),
-                            items: _genderOptions.map((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(value),
-                              );
-                            }).toList(),
-                            onChanged: (newValue) {
-                              setState(() {
-                                _selectedGender = newValue;
-                              });
+                            controller: _phoneController,
+                            label: "เบอร์โทรศัพท์",
+                            icon: Icons.phone_android_rounded,
+                            keyboardType: TextInputType.phone,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return "กรุณากรอกเบอร์โทรศัพท์";
+                              }
+                              if (value.length < 10) {
+                                return "เบอร์โทรศัพท์ต้องมีอย่างน้อย 10 หลัก";
+                              }
+                              return null;
                             },
-                            validator: (value) => value == null ? "กรุณาเลือกเพศ" : null,
                           ),
                         ],
                       ),
@@ -190,7 +148,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     onPressed: _controller.isLoading ? null : _updateProfile,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF121212),
                       minimumSize: const Size(double.infinity, 55),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
@@ -198,7 +156,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       elevation: 0,
                     ),
                     child: _controller.isLoading 
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(color: Color(0xFF121212), strokeWidth: 3),
+                          )
                         : const Text(
                             "บันทึกข้อมูล",
                             style: TextStyle(
@@ -219,6 +181,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   InputDecoration _buildInputDecoration(String label, IconData icon, String? hint) {
     return InputDecoration(
       labelText: label,
+      labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
       hintText: hint,
       prefixIcon: Icon(icon, color: const Color(0xFF7CE5FF)),
       filled: true,
@@ -242,10 +205,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     required TextEditingController controller,
     required String label,
     required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
+      style: const TextStyle(color: Colors.white),
+      keyboardType: keyboardType,
       decoration: _buildInputDecoration(label, icon, null),
       validator: validator,
     );

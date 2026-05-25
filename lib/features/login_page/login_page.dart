@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:mobile_project/features/profile_page/profile_page.dart';
+import 'package:mobile_project/core/utils/session_manager.dart';
 import 'data/services/auth_service.dart';
 
 import 'package:geolocator/geolocator.dart';
@@ -66,6 +67,9 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (data != null) {
+        // Save session locally for auto-login
+        await SessionManager.saveSession(data.username, data.phoneno);
+
         if (mounted) {
           Navigator.pushReplacement(
             context,

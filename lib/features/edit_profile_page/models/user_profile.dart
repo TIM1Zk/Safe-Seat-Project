@@ -4,6 +4,7 @@ class UserProfile {
   final String lastName;
   final String birthday;
   final String gender;
+  final String phoneNo;
 
   UserProfile({
     required this.username,
@@ -11,15 +12,17 @@ class UserProfile {
     required this.lastName,
     required this.birthday,
     required this.gender,
+    required this.phoneNo,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      username: json['username'] ?? '',
-      firstName: json['first_name'] ?? '',
-      lastName: json['last_name'] ?? '',
-      birthday: json['birthday'] ?? '',
-      gender: json['gender'] ?? '',
+      username: json['username']?.toString() ?? '',
+      firstName: json['first_name']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? '',
+      birthday: json['birthday']?.toString() ?? '',
+      gender: json['gender']?.toString() ?? '',
+      phoneNo: json['phoneno']?.toString() ?? '',
     );
   }
 
@@ -30,6 +33,7 @@ class UserProfile {
       'last_name': lastName,
       'birthday': birthday,
       'gender': gender,
+      'phoneno': phoneNo,
     };
   }
 }

@@ -14,7 +14,8 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
 
 ## ✨ Key Features
 
-- **🔐 Secure Authentication:** Login restricted to approved users only (`registerstatus = 'อนุมัติแล้ว'`).
+- **🔐 Secure Authentication & Persistent Login:** Login restricted to approved users with automatic login state storage (`shared_preferences`) so users don't need to log in every time (Auto-login like Grab).
+- **🚗 Driver Car Management:** Premium vehicle details card on the profile page and a dedicated frosted-blue vehicle edit screen supporting real-time database updates for drivercar details (Brand, Model, Color, Plate).
 - **🤝 Synced Buddy Request & Team System:** 
   - **Location-Aware Search:** Find nearby buddies based on real-time location.
   - **Real-time Requests:** Send/Receive buddy requests with a 5-minute auto-expiry rule.
@@ -25,7 +26,7 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
   - **Multi-Status Filter:** View and filter submitted reports by status: "ทั้งหมด" (All), "กำลังดำเนินการ" (In Progress), and "เสร็จสิ้น" (Completed).
   - **Detailed Report Sheet:** Interactive modal sheets showing report details, date, status, custom category icons, and receipt images.
   - **Team-based API Querying:** Intelligently joins and matches reports to drivers based on their current `buddy_team_id` context.
-- **👤 Profile Management:** View and edit user profile details through API endpoints.
+- **👤 Profile Management:** View profile details and edit phone numbers securely through API endpoints.
 - **💰 Wallet System:** Real-time balance, transaction history, and secure withdrawal flow.
 - **📍 Location Tracking:** Automatic capture and storage of driver's GPS coordinates upon login.
 - **🖼️ Image Optimization:** Dynamic JSON parsing utility for resilient profile picture loading across the app.
@@ -39,16 +40,19 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
 ```text
 lib/
 ├── core/
-│   └── network/              # API Service (Dio Client)
+│   ├── network/              # API Service (Dio Client)
+│   └── utils/                # SessionManager (Local storage), ImageUtils, etc.
 ├── features/
 │   ├── searchbuddy_page/     # Buddy search & Request notifications
 │   ├── Mybuddy_page/         # Active buddy details & Team management
 │   ├── Listdriverreport_page/# Driver problem & expense reporting interface
 │   ├── login_page/           # Authentication flow
-│   ├── profile_page/         # User profile view
+│   ├── profile_page/         # User profile & Vehicle information card
 │   ├── view_wallet_balance/  # Dashboard for wallet
-│   └── withdraw_wallet_page/ # Withdrawal interface
-│   └── edit_profile_page/    # Edit profile details
+│   ├── withdraw_wallet_page/ # Withdrawal interface
+│   ├── edit_profile_page/    # Phone number modification interface
+│   ├── edit_car_page/        # Vehicle details modification interface
+│   └── loading_screen/       # Loader & auto-login check on startup
 └── main.dart                 # App entry point & configuration
 ```
 

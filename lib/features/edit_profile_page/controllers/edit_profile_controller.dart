@@ -34,10 +34,7 @@ class EditProfileController extends ChangeNotifier {
   }
 
   Future<bool> updateProfile({
-    required String firstName,
-    required String lastName,
-    required String birthday,
-    required String gender,
+    required String phoneNo,
   }) async {
     isLoading = true;
     errorMessage = null;
@@ -45,10 +42,7 @@ class EditProfileController extends ChangeNotifier {
 
     try {
       final updatedData = {
-        'first_name': firstName,
-        'last_name': lastName,
-        'birthday': birthday,
-        'gender': gender,
+        'phoneno': phoneNo,
       };
 
       final response = await ApiService.put('/users/$phone', data: updatedData);

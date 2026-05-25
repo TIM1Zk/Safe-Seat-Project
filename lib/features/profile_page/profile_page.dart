@@ -6,6 +6,8 @@ import 'package:mobile_project/features/view_wallet_balance/view_wallet_balance.
 import 'package:mobile_project/features/searchbuddy_page/searchbuddy_page.dart';
 import 'package:mobile_project/features/Listdriverreport_page/Listdriverreport_page.dart';
 import 'package:mobile_project/core/network/api_service.dart';
+import 'package:mobile_project/core/utils/session_manager.dart';
+import 'package:mobile_project/features/edit_car_page/edit_car_page.dart';
 
 class ProfilePage extends StatelessWidget {
   final String username;
@@ -166,6 +168,45 @@ class ProfilePage extends StatelessWidget {
                     ),
                   ),
 
+                  const SizedBox(height: 20),
+
+                  // --- Car Info Card ---
+                  if (data['drivercar'] != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 5, bottom: 8),
+                            child: Text(
+                              "ข้อมูลรถยนต์",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF7CE5FF),
+                              ),
+                            ),
+                          ),
+                          _buildInfoTile(
+                            icon: Icons.directions_car_filled_rounded,
+                            label: "ยี่ห้อและรุ่นรถยนต์",
+                            value: "${data['drivercar']['carbrand'] ?? ''} ${data['drivercar']['carmodel'] ?? ''}",
+                          ),
+                          _buildInfoTile(
+                            icon: Icons.color_lens_rounded,
+                            label: "สีรถยนต์",
+                            value: (data['drivercar']['carcolor'] ?? '').toString(),
+                          ),
+                          _buildInfoTile(
+                            icon: Icons.badge_rounded,
+                            label: "ป้ายทะเบียนรถยนต์",
+                            value: (data['drivercar']['carplate'] ?? '').toString(),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   const SizedBox(height: 30),
 
                   // --- Buttons ---
@@ -229,8 +270,25 @@ class ProfilePage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
+                        _buildPremiumButton(
+                          context: context,
+                          icon: Icons.directions_car_filled_rounded,
+                          label: "แก้ไขข้อมูลรถยนต์",
+                          isGradient: false,
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditCarPage(
+                                username: username,
+                                phoneno: phoneno,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         OutlinedButton.icon(
-                          onPressed: () {
+                          onPressed: () async {
+                            await SessionManager.clearSession();
                             if (context.mounted) {
                               Navigator.pushNamedAndRemoveUntil(
                                 context,
