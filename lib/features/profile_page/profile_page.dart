@@ -8,6 +8,7 @@ import 'package:mobile_project/features/Listdriverreport_page/Listdriverreport_p
 import 'package:mobile_project/core/network/api_service.dart';
 import 'package:mobile_project/core/utils/session_manager.dart';
 import 'package:mobile_project/features/edit_car_page/edit_car_page.dart';
+import 'package:mobile_project/features/map_page/map_page.dart';
 
 class ProfilePage extends StatelessWidget {
   final String username;
@@ -237,6 +238,19 @@ class ProfilePage extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) => SearchbuddyPage(currentUsername: username),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildPremiumButton(
+                          context: context,
+                          icon: Icons.map_rounded,
+                          label: "แผนที่ของฉัน (Mapbox)",
+                          isGradient: true,
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MapPage(),
                             ),
                           ),
                         ),
