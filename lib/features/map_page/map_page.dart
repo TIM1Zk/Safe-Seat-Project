@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:dio/dio.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -16,24 +15,11 @@ class _MapPageState extends State<MapPage> {
   bool isSatelliteMode = false;
   bool isMapReady = false;
 
-  // โทเคนสาธารณะของ Mapbox สำหรับเรียกใช้งานแผนที่ความละเอียดสูง (ดึงจาก secrets.json ผ่าน --dart-define-from-file)
-  static const String _mapboxAccessToken = String.fromEnvironment(
-    'MAPBOX_ACCESS_TOKEN',
-    defaultValue: '',
-  );
 
-  // คีย์ SerpApi สำหรับเรียกค้นหาผ่าน Google Maps Engine (ดึงจาก secrets.json ผ่าน --dart-define-from-file)
-  static const String _serpApiKey = String.fromEnvironment(
-    'SERP_API_KEY',
-    defaultValue: '',
-  );
 
   Position? _currentPosition;
   String _currentAddress = "กำลังดึงข้อมูลที่อยู่พิกัด GPS ปัจจุบัน...";
 
-  List<dynamic> _searchResults = [];
-  bool _isSearching = false;
-  final TextEditingController _searchController = TextEditingController();
 
   List<Marker> _markers = [];
   String? _selectedPlaceName;
@@ -54,29 +40,10 @@ class _MapPageState extends State<MapPage> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     _mapController.dispose();
     super.dispose();
   }
 
-  Future<String> _getAddressFromCoords(double lat, double lon) async {
-    try {
-      final dio = Dio();
-      final url = "https://api.mapbox.com/geocoding/v5/mapbox.places/$lon,$lat.json?access_token=$_mapboxAccessToken&language=th";
-      debugPrint("[SafeSeat Mapbox] Calling Mapbox Reverse Geocoding API: $url");
-      final response = await dio.get(url);
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data;
-        if (data['features'] != null && (data['features'] as List).isNotEmpty) {
-          final firstFeature = data['features'][0];
-          return firstFeature['place_name'] ?? "ไม่พบข้อมูลที่อยู่";
-        }
-      }
-    } catch (e) {
-      debugPrint("[SafeSeat Mapbox] Mapbox Geocoding Error: $e");
-    }
-    return "ไม่สามารถดึงข้อมูลที่อยู่ได้";
-  }
 
   Future<void> _initLocation() async {
     try {
@@ -109,7 +76,7 @@ class _MapPageState extends State<MapPage> {
           ),
         );
 
-        String address = await _getAddressFromCoords(position.latitude, position.longitude);
+        String address = "พิกัด: " + position.latitude.toStringAsFixed(5) + ", " + position.longitude.toStringAsFixed(5);
 
         if (mounted) {
           setState(() {
@@ -142,7 +109,7 @@ class _MapPageState extends State<MapPage> {
   }
 
   void _addDriverMarkerAt(double lat, double lon, {bool showSnackBar = true}) async {
-    final address = await _getAddressFromCoords(lat, lon);
+    final address = "พิกัด: " + lat.toStringAsFixed(5) + ", " + lon.toStringAsFixed(5);
     
     setState(() {
       _selectedPlaceName = "คุณ (คนขับ Safe Seat)";
@@ -194,117 +161,6 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
-  Future<void> _searchPlaces(String query) async {
-    if (query.trim().isEmpty) {
-      setState(() {
-        _searchResults = [];
-      });
-      return;
-    }
-
-    setState(() {
-      _isSearching = true;
-    });
-
-    try {
-      final dio = Dio();
-      String url = "https://serpapi.com/search?engine=google_maps&q=${Uri.encodeComponent(query)}&api_key=$_serpApiKey";
-      
-      if (_currentPosition != null && 
-          _currentPosition!.latitude >= 5.0 && _currentPosition!.latitude <= 21.0 &&
-          _currentPosition!.longitude >= 97.0 && _currentPosition!.longitude <= 106.0) {
-        url += "&ll=@${_currentPosition!.latitude},${_currentPosition!.longitude},14z";
-      }
-      
-      debugPrint("[SafeSeat Map] Search SerpApi Google Maps: $url");
-      final response = await dio.get(url);
-      
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data;
-        if (data['local_results'] != null) {
-          setState(() {
-            _searchResults = data['local_results'];
-          });
-        } else {
-          setState(() {
-            _searchResults = [];
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("[SafeSeat Search] Map Search Error: $e");
-    } finally {
-      setState(() {
-        _isSearching = false;
-      });
-    }
-  }
-
-  void _selectSearchedPlace(dynamic place) {
-    FocusScope.of(context).unfocus();
-    
-    final String name = place['title'] ?? "สถานที่ค้นหา";
-    final String address = place['address'] ?? "ไม่ระบุที่อยู่";
-    
-    final coords = place['gps_coordinates'];
-    final double? lat = coords != null && coords['latitude'] != null 
-        ? double.tryParse(coords['latitude'].toString()) 
-        : null;
-    final double? lon = coords != null && coords['longitude'] != null 
-        ? double.tryParse(coords['longitude'].toString()) 
-        : null;
-
-    if (lat == null || lon == null) return;
-
-    debugPrint("[SafeSeat Search] Selected searched place: $name ($lat, $lon)");
-
-    setState(() {
-      _searchResults = [];
-      _searchController.text = name;
-      _selectedPlaceName = name;
-      _selectedPlaceAddress = address;
-      _currentAddress = address;
-
-      _markers = [
-        Marker(
-          point: LatLng(lat, lon),
-          width: 80,
-          height: 80,
-          child: GestureDetector(
-            onTap: () {
-              _showMarkerDetails(name, address);
-            },
-            child: const Icon(
-              Icons.location_on,
-              color: Colors.red,
-              size: 48,
-            ),
-          ),
-        )
-      ];
-    });
-
-    _moveToCoordinates(lat, lon, zoom: 16);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("พบสถานที่: $name และเลื่อนแผนที่ปักหมุดแล้ว"),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF1E1E1E),
-        action: SnackBarAction(
-          label: "ตกลง",
-          textColor: const Color(0xFF7CE5FF),
-          onPressed: () {},
-        ),
-      ),
-    );
-  }
-
-  void _toggleMapStyle() {
-    setState(() {
-      isSatelliteMode = !isSatelliteMode;
-    });
-  }
 
   void _zoomIn() {
     _moveToCoordinates(
@@ -326,12 +182,8 @@ class _MapPageState extends State<MapPage> {
   Widget build(BuildContext context) {
     const accentColor = Color(0xFF7CE5FF);
     
-    // กำหนดสไตล์แผนที่จากผู้ให้บริการ Open-source (ฟรี 100% ไม่ต้องใช้ API Key / บัตรเครดิต)
-    // - โหมดดาวเทียม: ใช้ Esri World Imagery (ภาพถ่ายดาวเทียมความละเอียดสูง)
-    // - โหมดปกติ: ใช้ CartoDB Dark Matter (ธีมมืดหรูหราเข้ากับโทนสีหลักของแอป SafeSeat)
-    final String openMapUrl = isSatelliteMode
-        ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-        : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+    // ใช้แผนที่มาตรฐานของ OpenStreetMap
+    final String openMapUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
     return Scaffold(
       appBar: AppBar(
@@ -541,12 +393,6 @@ class _MapPageState extends State<MapPage> {
             child: Column(
               children: [
                 _buildCircleButton(
-                  icon: isSatelliteMode ? Icons.map_rounded : Icons.satellite_alt_rounded,
-                  tooltip: isSatelliteMode ? "แสดงแผนที่ถนน" : "แสดงแผนที่ดาวเทียม",
-                  onPressed: _toggleMapStyle,
-                ),
-                const SizedBox(height: 12),
-                _buildCircleButton(
                   icon: Icons.add,
                   tooltip: "ซูมเข้า",
                   onPressed: _zoomIn,
@@ -561,122 +407,6 @@ class _MapPageState extends State<MapPage> {
             ),
           ),
 
-          // 6. กล่องค้นหาสถานที่แบบพรีเมียม (Premium Search Bar Overlay จาก Longdo Search REST API)
-          Positioned(
-            top: 20,
-            left: 20,
-            right: 90, // เว้นช่องว่างขวาหลบปุ่มกลมด้านขวาบน
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // กล่องค้นหาหลัก
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E1E1E).withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.12), width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: "ค้นหาสถานที่หรือจุดหมาย...",
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFF7CE5FF)),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, color: Colors.white60),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchResults = [];
-                                });
-                              },
-                            )
-                          : _isSearching
-                              ? const Padding(
-                                  padding: EdgeInsets.all(12.0),
-                                  child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7CE5FF)),
-                                    ),
-                                  ),
-                                )
-                              : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onChanged: (val) {
-                      _searchPlaces(val);
-                    },
-                  ),
-                ),
-
-                // ตารางแสดงผลรายการค้นหาแบบเลื่อนได้ (Search Results Suggestion Card)
-                if (_searchResults.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    constraints: const BoxConstraints(maxHeight: 250),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E).withOpacity(0.95),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withOpacity(0.1), width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        padding: EdgeInsets.zero,
-                        itemCount: _searchResults.length,
-                        separatorBuilder: (context, index) => Divider(
-                          color: Colors.white.withOpacity(0.08),
-                          height: 1,
-                        ),
-                        itemBuilder: (context, index) {
-                          final place = _searchResults[index];
-                          final name = place['title'] ?? "ไม่ระบุชื่อ";
-                          final address = place['address'] ?? "ไม่ระบุที่อยู่";
-
-                          return ListTile(
-                            leading: const Icon(Icons.location_on_outlined, color: Color(0xFF7CE5FF)),
-                            title: Text(
-                              name,
-                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              address,
-                              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () => _selectSearchedPlace(place),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
         ],
       ),
     );
