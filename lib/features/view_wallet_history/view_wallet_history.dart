@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_project/core/network/api_service.dart';
 import 'package:intl/intl.dart';
 
@@ -48,101 +49,282 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("ประวัติการทำรายการ"),
+    double totalWithdraw = _transactions
+        .where((tx) => tx['type'] == 'withdraw')
+        .fold(0.0, (sum, tx) => sum + (tx['amount'] ?? 0).toDouble());
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator(color: Colors.black))
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Top Bar (Back Button and Title)
+                      Row(
+                        children: [
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            alignment: Alignment.centerLeft,
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new,
+                              color: Colors.black,
+                              size: 26,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          const Text(
+                            "WithDraw History",
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 2,
+                        color: Colors.grey.withOpacity(0.2),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 2. TOTAL Withdraw Card
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5E5E7),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.black12),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              "TOTAL Withdraw",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "\$${totalWithdraw.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                fontSize: 48,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // 3. Filter Pills
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildFilterPill("Last 7 Days"),
+                            const SizedBox(width: 10),
+                            _buildFilterPill("Status"),
+                            const SizedBox(width: 10),
+                            _buildFilterPill("Custom", icon: Icons.calendar_today),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // 4. Recent Transactions Title
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: const [
+                          Text(
+                            "Recent Transections",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Text(
+                            "January 2026",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.black38,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // 5. Transactions List
+                      _transactions.isEmpty
+                          ? _buildEmptyState()
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _transactions.length,
+                              itemBuilder: (context, index) {
+                                final tx = _transactions[index];
+                                return _buildTransactionCard(tx);
+                              },
+                            ),
+                    ],
+                  ),
+                ),
+        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _transactions.isEmpty
-          ? _buildEmptyState()
-          : RefreshIndicator(
-              onRefresh: _loadTransactions,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(20),
-                itemCount: _transactions.length,
-                itemBuilder: (context, index) {
-                  final tx = _transactions[index];
-                  return _buildTransactionCard(tx);
-                },
-              ),
-            ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildFilterPill(String label, {IconData? icon}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE5E5E7),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.history, size: 80, color: Colors.white.withOpacity(0.1)),
-          const SizedBox(height: 20),
           Text(
-            "ยังไม่มีประวัติการทำรายการ",
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 18),
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
+          if (icon != null) ...[
+            const SizedBox(width: 8),
+            Icon(icon, size: 16, color: Colors.black87),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildTransactionCard(Map<String, dynamic> tx) {
-    final bool isWithdraw = tx['type'] == 'withdraw';
-    final DateTime createdAt = DateTime.parse(tx['created_at']).toLocal();
-    final String formattedDate = DateFormat(
-      'dd MMM yyyy, HH:mm',
-    ).format(createdAt);
-    final double amount = (tx['amount'] ?? 0).toDouble();
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 15),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      elevation: 2,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 10,
-        ),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: isWithdraw ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            isWithdraw ? Icons.call_made : Icons.call_received,
-            color: isWithdraw ? Colors.red : Colors.green,
-          ),
-        ),
-        title: Text(
-          isWithdraw ? "ถอนเงิน" : "เติมเงิน",
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-        ),
-        subtitle: Text(
-          formattedDate,
-          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
-        ),
-        trailing: Column(
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              "${isWithdraw ? '-' : '+'}${amount.toStringAsFixed(2)}",
-              style: TextStyle(
-                color: isWithdraw ? Colors.red : Colors.green,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            Text(
-              tx['status'] == 'success' ? "สำเร็จ" : "รอดำเนินการ",
-              style: TextStyle(
-                color: tx['status'] == 'success' ? Colors.green : Colors.orange,
-                fontSize: 11,
-              ),
+            Icon(Icons.history, size: 80, color: Colors.grey.withOpacity(0.3)),
+            const SizedBox(height: 20),
+            const Text(
+              "ยังไม่มีประวัติการทำรายการ",
+              style: TextStyle(color: Colors.black45, fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionCard(Map<String, dynamic> tx) {
+    final DateTime createdAt = DateTime.parse(tx['created_at']).toLocal();
+    final String formattedDate = DateFormat('dd MMM yyyy, HH:mm').format(createdAt);
+    final double amount = (tx['amount'] ?? 0).toDouble();
+    final String status = tx['status'] == 'success' ? 'Completed' : 'Pending';
+    final Color statusColor = tx['status'] == 'success' ? const Color(0xFF22C55E) : Colors.orange;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE5E5E7),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          // SCB Bank Icon
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFF4A154B), // SCB Purple
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.shield_outlined, color: Colors.amber, size: 24),
+                Text(
+                  "SCB",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Transaction Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "\$${amount.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  "Siam Commercial Bank **** 1234",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.black54,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formattedDate,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.black45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Status Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              status,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,9 +1,15 @@
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mobile_project/core/network/api_service.dart';
 import 'package:mobile_project/core/utils/session_manager.dart';
+import 'package:mobile_project/features/profile_page/profile_page.dart';
+import 'package:mobile_project/features/view_wallet_balance/view_wallet_balance.dart';
+import 'package:mobile_project/features/Listdriverreport_page/Listdriverreport_page.dart';
+import 'package:mobile_project/features/searchbuddy_page/searchbuddy_page.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -19,8 +25,11 @@ class _MapPageState extends State<MapPage> {
   bool isOnline = false;
   bool _isLeader = true;
   bool _isLoadingLeaderStatus = true;
-
-
+  int? _buddyTeamId;
+  Timer? _locationUpdateTimer;
+  RealtimeChannel? _teamChannel;
+  StreamSubscription<List<Map<String, dynamic>>>? _teamStatusSubscription;
+  bool _isJobOfferOpen = false;
 
   Position? _currentPosition;
   String _currentAddress = "กำลังดึงข้อมูลที่อยู่พิกัด GPS ปัจจุบัน...";
@@ -35,6 +44,7 @@ class _MapPageState extends State<MapPage> {
     super.initState();
     _initLocation();
     _checkLeaderStatus();
+    _startLocationUpdater();
     
     // ตั้งค่าสถานะแผนที่พร้อมในบิลด์ถัดไป
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -46,6 +56,9 @@ class _MapPageState extends State<MapPage> {
 
   @override
   void dispose() {
+    _locationUpdateTimer?.cancel();
+    _teamChannel?.unsubscribe();
+    _teamStatusSubscription?.cancel();
     _mapController.dispose();
     super.dispose();
   }
@@ -59,10 +72,18 @@ class _MapPageState extends State<MapPage> {
           final data = response.data;
           if (data is Map && data.isNotEmpty) {
             String leaderId = data['leaderid'].toString().toLowerCase();
+            int? teamId;
+            if (data['buddyteamid'] != null) {
+              teamId = int.tryParse(data['buddyteamid'].toString());
+            }
             if (mounted) {
               setState(() {
                 _isLeader = (leaderId == username.toLowerCase());
+                _buddyTeamId = teamId;
               });
+              if (_buddyTeamId != null) {
+                _setupRealtimeListeners(_buddyTeamId!);
+              }
             }
           } else {
              if (mounted) setState(() => _isLeader = true);
@@ -76,6 +97,220 @@ class _MapPageState extends State<MapPage> {
        if (mounted) setState(() => _isLeader = true);
     } finally {
        if (mounted) setState(() => _isLoadingLeaderStatus = false);
+    }
+  }
+
+  void _setupRealtimeListeners(int teamId) {
+    final supabase = Supabase.instance.client;
+    
+    // 1. Listen for Broadcast (New Job Offers)
+    _teamChannel = supabase.channel('team_room_$teamId');
+    _teamChannel!.onBroadcast(
+      event: 'new_job_dispatched',
+      callback: (payload) {
+        if (payload != null) {
+          _showNewJobOfferDialog(payload);
+        }
+      },
+    ).subscribe();
+
+    // 2. Listen for Team Status changes (if partner accepts job)
+    _teamStatusSubscription = supabase
+        .from('buddyteam')
+        .stream(primaryKey: ['buddyteamid'])
+        .eq('buddyteamid', teamId)
+        .listen((List<Map<String, dynamic>> data) {
+      if (data.isNotEmpty) {
+        final team = data.first;
+        if (team['teamstatus'] == 'Busy') {
+          // If status is Busy, meaning the job was accepted
+          _closeJobOfferDialog();
+        }
+      }
+    });
+  }
+
+  void _startLocationUpdater() {
+    _locationUpdateTimer?.cancel();
+    _locationUpdateTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+      // If we don't have a team ID yet, periodically check it
+      if (_buddyTeamId == null) {
+        await _checkLeaderStatus();
+      }
+
+      // Only Leader updates location, and only when matched
+      if (_isLeader && _buddyTeamId != null) {
+        try {
+          Position? position;
+          try {
+            position = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.low,
+                timeLimit: Duration(seconds: 5),
+              ),
+            );
+          } catch (e) {
+            debugPrint("Failed to get current position in timer: $e");
+          }
+
+          // Fallback to last known position if current position fetch fails
+          position ??= await Geolocator.getLastKnownPosition();
+
+          if (position != null) {
+            if (mounted) {
+              setState(() {
+                _currentPosition = position;
+                _currentAddress = "พิกัด: ${position!.latitude.toStringAsFixed(5)}, ${position!.longitude.toStringAsFixed(5)}";
+              });
+            }
+
+            await Supabase.instance.client
+                .from('buddyteam')
+                .update({
+                  'currentloclat': position.latitude,
+                  'currentloclng': position.longitude,
+                })
+                .eq('buddyteamid', _buddyTeamId!);
+          }
+        } catch (e) {
+          debugPrint("Failed to update team location: $e");
+        }
+      }
+    });
+  }
+
+  Future<void> _forceUpdateLocation() async {
+    if (!_isLeader) {
+      debugPrint("Not a leader. Cannot update GPS.");
+      return;
+    }
+    if (_buddyTeamId == null) {
+      debugPrint("BuddyTeamId is null. Cannot update GPS.");
+      return;
+    }
+    
+    // พยายามดึงพิกัดใหม่ถ้ายังไม่มี
+    if (_currentPosition == null) {
+      try {
+        _currentPosition = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.low,
+            timeLimit: Duration(seconds: 5),
+          ),
+        );
+      } catch (e) {
+        debugPrint("Failed to fetch GPS during force update: $e");
+        return;
+      }
+    }
+
+    if (_currentPosition != null) {
+      try {
+        await Supabase.instance.client
+            .from('buddyteam')
+            .update({
+              'currentloclat': _currentPosition!.latitude,
+              'currentloclng': _currentPosition!.longitude,
+            })
+            .eq('buddyteamid', _buddyTeamId!);
+        debugPrint("Forced GPS update to DB successful.");
+      } catch (e) {
+        debugPrint("Failed to force update team location: $e");
+      }
+    }
+  }
+
+  void _showNewJobOfferDialog(Map<String, dynamic> payload) {
+    if (_isJobOfferOpen) return; // Prevent multiple dialogs
+    
+    setState(() {
+      _isJobOfferOpen = true;
+    });
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("งานใหม่เข้า!"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("ราคา: ${payload['requestfee'] ?? 0} บาท"),
+              const SizedBox(height: 8),
+              Text("ระยะทาง: ${payload['reqdistance'] ?? 0} กม."),
+              const SizedBox(height: 8),
+              if (payload['note'] != null && payload['note'].toString().isNotEmpty)
+                Text("หมายเหตุ: ${payload['note']}"),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  _isJobOfferOpen = false;
+                });
+              },
+              child: const Text("ปฏิเสธ"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  _isJobOfferOpen = false;
+                });
+                _acceptTeamJob(payload['requestid']);
+              },
+              child: const Text("รับงาน"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _closeJobOfferDialog() {
+    if (_isJobOfferOpen && mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      setState(() {
+        _isJobOfferOpen = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("บัดดี้ของคุณรับงานนี้แล้ว กำลังเข้าสู่โหมดนำทาง")),
+      );
+    }
+  }
+
+  Future<void> _acceptTeamJob(dynamic requestId) async {
+    try {
+      if (_buddyTeamId == null) return;
+      
+      final response = await ApiService.post('/buddy-team/accept-job', data: {
+        'request_id': requestId,
+        'buddy_team_id': _buddyTeamId,
+      });
+      
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response.data['message'] ?? 'รับงานสำเร็จ')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response.data['message'] ?? 'รับงานไม่สำเร็จ (อาจมีคนรับไปแล้ว)')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์')),
+        );
+      }
     }
   }
 
@@ -213,33 +448,125 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
+  Widget _buildOnlineOfflineButton() {
+    return GestureDetector(
+      onTap: () async {
+        if (!_isLoadingLeaderStatus && !_isLeader) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("เฉพาะหัวหน้าทีมเท่านั้นที่สามารถกด Online ได้")),
+          );
+          return;
+        }
+
+        if (!isOnline) { // กำลังจะเปิด Online
+          if (_buddyTeamId == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("กรุณาจับคู่เพื่อนร่วมทางก่อนเข้าสู่สถานะออนไลน์")),
+            );
+            String? username = await SessionManager.getUsername();
+            if (username != null && mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SearchbuddyPage(currentUsername: username),
+                ),
+              );
+            }
+            return;
+          }
+        }
+
+        setState(() {
+          isOnline = !isOnline;
+        });
+        if (isOnline) {
+          _forceUpdateLocation();
+        }
+      },
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        decoration: BoxDecoration(
+          color: isOnline ? const Color(0xFF22C55E) : const Color(0xFF1E1F22),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.power_settings_new,
+              color: Colors.white,
+              size: 24,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              isOnline ? "ONLINE" : "OFFLINE",
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBuddyButton() {
+    return GestureDetector(
+      onTap: () async {
+        String? username = await SessionManager.getUsername();
+        if (username != null && mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SearchbuddyPage(currentUsername: username),
+            ),
+          );
+        }
+      },
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE2E8F0),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.people_alt_outlined,
+          color: Colors.black,
+          size: 26,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    const accentColor = Color(0xFF7CE5FF);
-    
     // ใช้แผนที่มาตรฐานของ OpenStreetMap
     final String openMapUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("แผนที่และค้นหาร้านอาหาร"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.my_location),
-            onPressed: () {
-              if (_currentPosition != null) {
-                _addDriverMarkerAt(_currentPosition!.latitude, _currentPosition!.longitude, showSnackBar: true);
-              } else {
-                _initLocation();
-              }
-            },
-            tooltip: "ดึงตำแหน่งปัจจุบัน",
-          ),
-        ],
-      ),
       body: Stack(
         children: [
-          // 1. ตัวแสดงผลแผนที่ Open-source ผ่าน flutter_map
+          // 1. แผนที่ Fullscreen
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
@@ -249,130 +576,22 @@ class _MapPageState extends State<MapPage> {
               minZoom: 3.0,
             ),
             children: [
-              // โหลดแผ่นระนาบภาพแผนที่ Open-source Tiles
               TileLayer(
                 urlTemplate: openMapUrl,
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.example.mobile_project',
                 retinaMode: RetinaMode.isHighDensity(context),
               ),
-              
-              // โดมแสดงมาร์กเกอร์ / ปักหมุด
               MarkerLayer(
                 markers: _markers,
               ),
             ],
           ),
 
-          // ปุ่ม Online / Offline (ด้านบนตรงกลาง)
-          Positioned(
-            top: 20,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  if (!_isLoadingLeaderStatus && !_isLeader) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("เฉพาะหัวหน้าทีมเท่านั้นที่สามารถกด Online ได้")),
-                    );
-                    return;
-                  }
-                  setState(() {
-                    isOnline = !isOnline;
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: (!_isLeader) ? Colors.grey.shade600 : (isOnline ? Colors.green : Colors.grey.shade800),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 8,
-                ),
-                child: Text(
-                  _isLoadingLeaderStatus ? "LOADING..." : (isOnline ? "ONLINE" : "OFFLINE"),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // 2. แถบแสดงที่อยู่ปัจจุบันแบบพรีเมียม (Glassmorphism Bottom Address Card)
-          Positioned(
-            bottom: 110,
-            left: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E).withOpacity(0.95),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.12), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.4),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: const BoxDecoration(
-                      color: Color(0x1A7CE5FF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.location_on,
-                      color: Color(0xFF7CE5FF),
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          "ตำแหน่งและพิกัดปัจจุบันของคุณ",
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _currentAddress,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // 3. ป้ายแสดงรายละเอียด Marker เมื่อถูกสัมผัสแตะ (Marker Info Bubble Popup)
+          // 2. ป้ายแสดงรายละเอียด Marker เมื่อถูกสัมผัสแตะ
           if (_selectedPlaceName != null)
             Positioned(
-              bottom: 220,
+              bottom: 120,
               left: 20,
               right: 20,
               child: Container(
@@ -437,77 +656,121 @@ class _MapPageState extends State<MapPage> {
               ),
             ),
 
-          // 4. ปุ่มปักหมุดกลับมาตำแหน่งคนขับ (ด้านล่างขวา)
+          // 3. ปุ่มเข็มทิศ / ตำแหน่งปัจจุบัน (ขวาล่างด้านบนปุ่ม Offline)
           Positioned(
-            bottom: 30,
+            bottom: 120,
             right: 20,
-            child: FloatingActionButton.extended(
-              heroTag: "btn_marker",
-              onPressed: () {
+            child: GestureDetector(
+              onTap: () {
                 if (_currentPosition != null) {
                   _addDriverMarkerAt(_currentPosition!.latitude, _currentPosition!.longitude, showSnackBar: true);
                 } else {
                   _initLocation();
                 }
               },
-              backgroundColor: accentColor,
-              foregroundColor: const Color(0xFF121212),
-              icon: const Icon(Icons.my_location_rounded),
-              label: const Text(
-                "ตำแหน่งของฉัน",
-                style: TextStyle(fontWeight: FontWeight.bold),
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Transform.rotate(
+                  angle: 0.785398, // หมุนเอียง 45 องศาให้ชี้บนขวา
+                  child: const Icon(
+                    Icons.navigation,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
               ),
             ),
           ),
 
-          // 5. แผงเครื่องมือซูมและการตั้งค่าสไตล์ (ด้านขวาบน)
+          // 4. แถบปุ่ม Offline/Online และ ปุ่มค้นหา Buddy (ด้านล่างสุดของ Stack)
           Positioned(
-            top: 20,
-            right: 20,
-            child: Column(
+            bottom: 30,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildCircleButton(
-                  icon: Icons.add,
-                  tooltip: "ซูมเข้า",
-                  onPressed: _zoomIn,
-                ),
-                const SizedBox(height: 12),
-                _buildCircleButton(
-                  icon: Icons.remove,
-                  tooltip: "ซูมออก",
-                  onPressed: _zoomOut,
-                ),
+                _buildOnlineOfflineButton(),
+                const SizedBox(width: 16),
+                _buildBuddyButton(),
               ],
             ),
           ),
-
         ],
       ),
-    );
-  }
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 0, // แท็บ Home ในปัจจุบัน
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF1E1E1E),
+        selectedItemColor: const Color(0xFF7CE5FF),
+        unselectedItemColor: Colors.white60,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        onTap: (index) async {
+          if (index == 0) return; // อยู่หน้า Home แล้วไม่ต้องทำอะไร
+          String? username = await SessionManager.getUsername();
+          if (username == null) return;
 
-  Widget _buildCircleButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E).withOpacity(0.9),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1.5),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 8,
-            offset: Offset(0, 4),
+          if (index == 1) {
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WalletBalancePage(username: username),
+                ),
+              );
+            }
+          } else if (index == 2) {
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ListDriverReportPage(username: username),
+                ),
+              );
+            }
+          } else if (index == 3) {
+            String? phoneNo = await SessionManager.getPhoneNo();
+            if (phoneNo != null && mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilePage(username: username, phoneno: phoneNo),
+                ),
+              );
+            }
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            label: "Wallet",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today_outlined),
+            label: "Activity",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: "Profile",
           ),
         ],
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: const Color(0xFF7CE5FF)),
-        tooltip: tooltip,
-        onPressed: onPressed,
       ),
     );
   }

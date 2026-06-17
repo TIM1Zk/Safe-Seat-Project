@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:mobile_project/core/utils/session_manager.dart';
-import 'package:mobile_project/features/profile_page/profile_page.dart';
+import 'package:mobile_project/features/map_page/map_page.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -33,10 +33,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => ProfilePage(
-              username: username,
-              phoneno: phoneno,
-            ),
+            builder: (context) => const MapPage(),
           ),
         );
         return;

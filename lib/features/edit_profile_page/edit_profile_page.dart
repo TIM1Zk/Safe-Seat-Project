@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_project/features/profile_page/profile_page.dart';
 import 'package:mobile_project/features/edit_profile_page/controllers/edit_profile_controller.dart';
+import 'package:mobile_project/features/edit_car_page/edit_car_page.dart';
 import 'package:mobile_project/core/utils/session_manager.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -14,13 +15,16 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  String _phoneNo = "";
 
   late EditProfileController _controller;
 
   @override
   void initState() {
     super.initState();
+    _phoneNo = widget.phoneno;
     _controller = EditProfileController(phone: widget.username);
     _controller.addListener(_onControllerUpdate);
   }
@@ -29,14 +33,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void dispose() {
     _controller.removeListener(_onControllerUpdate);
     _controller.dispose();
-    _phoneController.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
   void _onControllerUpdate() {
-    if (_controller.userProfile != null && _phoneController.text.isEmpty) {
-      // โหลดข้อมูลเบอร์โทรปัจจุบันมาใส่ในช่องกรอก
-      _phoneController.text = _controller.userProfile!.phoneNo;
+    final profile = _controller.userProfile;
+    if (profile != null) {
+      if (_nameController.text.isEmpty) {
+        _nameController.text = "${profile.firstName} ${profile.lastName}".trim();
+      }
+      if (_emailController.text.isEmpty) {
+        _emailController.text = profile.email;
+      }
+      if (_phoneNo.isEmpty) {
+        _phoneNo = profile.phoneNo;
+      }
     }
     
     if (_controller.errorMessage != null && mounted) {
@@ -53,20 +66,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final newPhoneNo = _phoneController.text.trim();
+    final fullName = _nameController.text.trim();
+    String firstName = fullName;
+    String lastName = "";
+    final parts = fullName.split(' ');
+    if (parts.length > 1) {
+      firstName = parts.first;
+      lastName = parts.sublist(1).join(' ');
+    }
+
+    final email = _emailController.text.trim();
 
     final success = await _controller.updateProfile(
-      phoneNo: newPhoneNo,
+      phoneNo: _phoneNo,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
     );
 
     if (success && mounted) {
-      // อัปเดตเบอร์โทรศัพท์ในเซสชันเครื่องด้วยเพื่อให้ดึงข้อมูลถูกต้องในครั้งถัดไป
-      await SessionManager.saveSession(widget.username, newPhoneNo);
+      await SessionManager.saveSession(widget.username, _phoneNo);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("บันทึกข้อมูลเบอร์โทรศัพท์เรียบร้อยแล้ว!"),
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          content: const Text("บันทึกข้อมูลเรียบร้อยแล้ว!"),
+          backgroundColor: Colors.black,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -76,144 +100,321 @@ class _EditProfilePageState extends State<EditProfilePage> {
         MaterialPageRoute(
           builder: (context) => ProfilePage(
             username: widget.username,
-            phoneno: newPhoneNo,
+            phoneno: _phoneNo,
           ),
         ),
       );
     }
   }
 
+  void _showEditPhoneDialog() {
+    final phoneController = TextEditingController(text: _phoneNo);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("แก้ไขหมายเลขโทรศัพท์"),
+          content: TextField(
+            controller: phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              hintText: "กรอกหมายเลขโทรศัพท์มือถือ",
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("ยกเลิก"),
+            ),
+            TextButton(
+              onPressed: () {
+                if (phoneController.text.trim().isNotEmpty) {
+                  setState(() {
+                    _phoneNo = phoneController.text.trim();
+                  });
+                }
+                Navigator.pop(context);
+              },
+              child: const Text("ตกลง"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("แก้ไขเบอร์โทรศัพท์"),
-      ),
+      backgroundColor: Colors.white,
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
-          if (_controller.isLoading && _phoneController.text.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+          if (_controller.isLoading && _nameController.text.isEmpty) {
+            return const Center(child: CircularProgressIndicator(color: Colors.black));
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: Colors.white.withOpacity(0.05)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "ข้อมูลส่วนตัวที่แก้ไขได้",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+          final profile = _controller.userProfile;
+          final carBrand = profile?.carBrand ?? "";
+          final carModel = profile?.carModel ?? "";
+          final carPlate = profile?.carPlate ?? "";
+          final carBrandModel = "$carBrand $carModel".trim();
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. Top Bar
+                    Row(
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          alignment: Alignment.centerLeft,
+                          icon: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.black, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.black,
+                              size: 20,
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          _buildTextField(
-                            controller: _phoneController,
-                            label: "เบอร์โทรศัพท์",
-                            icon: Icons.phone_android_rounded,
-                            keyboardType: TextInputType.phone,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return "กรุณากรอกเบอร์โทรศัพท์";
-                              }
-                              if (value.length < 10) {
-                                return "เบอร์โทรศัพท์ต้องมีอย่างน้อย 10 หลัก";
-                              }
-                              return null;
-                            },
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          "แก้ไขข้อมูลบัญชี",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 2,
+                      color: Colors.grey.withOpacity(0.2),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // ข้อมูลส่วนตัว
+                    const Text(
+                      "ข้อมูลส่วนตัว",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 30),
-                  ElevatedButton(
-                    onPressed: _controller.isLoading ? null : _updateProfile,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: const Color(0xFF121212),
-                      minimumSize: const Size(double.infinity, 55),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "รูปโปรไฟล์",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
-                      elevation: 0,
                     ),
-                    child: _controller.isLoading 
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(color: Color(0xFF121212), strokeWidth: 3),
-                          )
-                        : const Text(
-                            "บันทึกข้อมูล",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                    const SizedBox(height: 8),
+                    const Divider(color: Colors.black, thickness: 1),
+                    const SizedBox(height: 20),
+
+                    // ชื่อ
+                    const Text(
+                      "ชื่อ",
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.black, width: 1.5),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.black, width: 2.0),
+                        ),
+                      ),
+                      style: const TextStyle(fontSize: 18, color: Colors.black, fontWeight: FontWeight.w500),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return "กรุณากรอกชื่อ";
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // หมายเลขโทรศัพท์มือถือ
+                    const Text(
+                      "หมายเลขโทรศัพท์มือถือ",
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 4),
+                    InkWell(
+                      onTap: _showEditPhoneDialog,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _phoneNo,
+                              style: const TextStyle(fontSize: 18, color: Colors.black, fontWeight: FontWeight.w500),
+                            ),
+                            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: Colors.black, thickness: 1.5),
+                    const SizedBox(height: 24),
+
+                    // ที่อยู่อีเมล
+                    const Text(
+                      "ที่อยู่อีเมล",
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.black, width: 1.5),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.black, width: 2.0),
+                        ),
+                      ),
+                      style: const TextStyle(fontSize: 18, color: Colors.black, fontWeight: FontWeight.w500),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return "กรุณากรอกที่อยู่อีเมล";
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 32),
+
+                    // ข้อมูลของยานพาหนะ
+                    const Text(
+                      "ข้อมูลของยานพาหนะ",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditCarPage(
+                              username: widget.username,
+                              phoneno: widget.phoneno,
                             ),
                           ),
-                  ),
-                ],
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  carPlate.isNotEmpty ? carPlate : "รวย 1234",
+                                  style: const TextStyle(fontSize: 18, color: Colors.black, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  carBrandModel.isNotEmpty ? carBrandModel : "Lamborghini urus",
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: Colors.black, thickness: 1.5),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditCarPage(
+                              username: widget.username,
+                              phoneno: widget.phoneno,
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        "แก้ไข / เพิ่มยานพาหนะ",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w500,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // บันทึกข้อมูล Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _controller.isLoading ? null : _updateProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: _controller.isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                              )
+                            : const Text(
+                                "บันทึกข้อมูล",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
         },
       ),
-    );
-  }
-
-  InputDecoration _buildInputDecoration(String label, IconData icon, String? hint) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-      hintText: hint,
-      prefixIcon: Icon(icon, color: const Color(0xFF7CE5FF)),
-      filled: true,
-      fillColor: const Color(0xFF1E1E1E),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: Color(0xFF7CE5FF), width: 2),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      style: const TextStyle(color: Colors.white),
-      keyboardType: keyboardType,
-      decoration: _buildInputDecoration(label, icon, null),
-      validator: validator,
     );
   }
 }

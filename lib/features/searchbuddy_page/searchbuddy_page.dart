@@ -391,10 +391,39 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
 
   Future<void> _sendRequest(String receiverUsername) async {
     try {
-      final response = await ApiService.post('/buddy-team', data: {'sender_id': widget.currentUsername, 'receiver_id': receiverUsername});
-      if (response.statusCode == 201 && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request sent! Wait for 5 minutes.')));
+      double lat = 0.0;
+      double lng = 0.0;
+      try {
+        // Try getting last known position first (instant) or get current position with 3s timeout
+        final position = await Geolocator.getLastKnownPosition() ??
+            await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.low,
+                timeLimit: Duration(seconds: 3),
+              ),
+            );
+        if (position != null) {
+          lat = position.latitude;
+          lng = position.longitude;
+        }
+      } catch (e) {
+        debugPrint("Error fetching location for request: $e");
+      }
+
+      final response = await ApiService.post('/buddy-team', data: {
+        'sender_id': widget.currentUsername, 
+        'receiver_id': receiverUsername,
+        'lat': lat,
+        'lng': lng,
+      });
+      if (response.statusCode == 201 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request sent! Wait for 5 minutes.')));
+      }
     } catch (e) {
       debugPrint("Error sending request: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to send request: $e')));
+      }
     }
   }
 }
