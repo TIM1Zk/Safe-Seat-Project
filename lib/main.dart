@@ -23,6 +23,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Safe Seat Project',
       theme: ThemeData(
+        fontFamily: 'Kanit',
         brightness: Brightness.dark,
         primaryColor: const Color(0xFF7CE5FF), // Frosted Blue
         scaffoldBackgroundColor: const Color(0xFF121212),

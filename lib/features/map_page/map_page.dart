@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:mobile_project/core/network/api_service.dart';
+import 'package:mobile_project/core/utils/session_manager.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -14,6 +16,9 @@ class _MapPageState extends State<MapPage> {
   final MapController _mapController = MapController();
   bool isSatelliteMode = false;
   bool isMapReady = false;
+  bool isOnline = false;
+  bool _isLeader = true;
+  bool _isLoadingLeaderStatus = true;
 
 
 
@@ -29,6 +34,7 @@ class _MapPageState extends State<MapPage> {
   void initState() {
     super.initState();
     _initLocation();
+    _checkLeaderStatus();
     
     // ตั้งค่าสถานะแผนที่พร้อมในบิลด์ถัดไป
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -42,6 +48,35 @@ class _MapPageState extends State<MapPage> {
   void dispose() {
     _mapController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkLeaderStatus() async {
+    try {
+      String? username = await SessionManager.getUsername();
+      if (username != null) {
+        final response = await ApiService.get('/buddy-team/active/$username');
+        if (response.statusCode == 200 && response.data != null && response.data.toString().isNotEmpty && response.data.toString() != "null") {
+          final data = response.data;
+          if (data is Map && data.isNotEmpty) {
+            String leaderId = data['leaderid'].toString().toLowerCase();
+            if (mounted) {
+              setState(() {
+                _isLeader = (leaderId == username.toLowerCase());
+              });
+            }
+          } else {
+             if (mounted) setState(() => _isLeader = true);
+          }
+        } else {
+           if (mounted) setState(() => _isLeader = true);
+        }
+      }
+    } catch (e) {
+       debugPrint("Error checking leader status: $e");
+       if (mounted) setState(() => _isLeader = true);
+    } finally {
+       if (mounted) setState(() => _isLoadingLeaderStatus = false);
+    }
   }
 
 
@@ -227,6 +262,45 @@ class _MapPageState extends State<MapPage> {
                 markers: _markers,
               ),
             ],
+          ),
+
+          // ปุ่ม Online / Offline (ด้านบนตรงกลาง)
+          Positioned(
+            top: 20,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  if (!_isLoadingLeaderStatus && !_isLeader) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("เฉพาะหัวหน้าทีมเท่านั้นที่สามารถกด Online ได้")),
+                    );
+                    return;
+                  }
+                  setState(() {
+                    isOnline = !isOnline;
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: (!_isLeader) ? Colors.grey.shade600 : (isOnline ? Colors.green : Colors.grey.shade800),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  elevation: 8,
+                ),
+                child: Text(
+                  _isLoadingLeaderStatus ? "LOADING..." : (isOnline ? "ONLINE" : "OFFLINE"),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+            ),
           ),
 
           // 2. แถบแสดงที่อยู่ปัจจุบันแบบพรีเมียม (Glassmorphism Bottom Address Card)
