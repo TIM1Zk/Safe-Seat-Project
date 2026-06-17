@@ -14,7 +14,7 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
 
 ## ✨ Key Features
 
-- **🔐 Secure Authentication & Persistent Login:** Login restricted to approved users with automatic login state storage (`shared_preferences`) so users don't need to log in every time (Auto-login like Grab).
+- **🔐 Secure Authentication & Persistent Login:** Login restricted to approved users with automatic login state storage (`shared_preferences`) and direct navigation to MapPage on successful startup/login.
 - **🚗 Driver Car Management:** Premium vehicle details card on the profile page and a dedicated frosted-blue vehicle edit screen supporting real-time database updates for drivercar details (Brand, Model, Color, Plate).
 - **🤝 Synced Buddy Request & Team System:** 
   - **Location-Aware Search:** Find nearby buddies based on real-time location.
@@ -26,9 +26,11 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
   - **Multi-Status Filter:** View and filter submitted reports by status: "ทั้งหมด" (All), "กำลังดำเนินการ" (In Progress), and "เสร็จสิ้น" (Completed).
   - **Detailed Report Sheet:** Interactive modal sheets showing report details, date, status, custom category icons, and receipt images.
   - **Team-based API Querying:** Intelligently joins and matches reports to drivers based on their current `buddy_team_id` context.
-- **👤 Profile Management:** View profile details and edit phone numbers securely through API endpoints.
-- **💰 Wallet System:** Real-time balance, transaction history, and secure withdrawal flow.
-- **📍 Location Tracking:** Automatic capture and storage of driver's GPS coordinates upon login.
+- **👤 Profile Management & Redesign:** 
+  - Beautiful white-themed profile detail screen (`DriverProfileDetailPage`) with a custom circular pencil/edit button.
+  - Redesigned "แก้ไขข้อมูลบัญชี" (`EditProfilePage`) screen matching custom mockup layout to update full name (first name & last name), email, and phone number.
+- **💰 Upgraded Wallet System:** Premium styled UI cards displaying real-time balance, custom withdrawal input flow, and withdrawal transaction history screen.
+- **📍 Location & Team Tracking:** Automatic capture and storage of leader's GPS coordinates every 30 seconds into `buddyteam` database table when active.
 - **🖼️ Image Optimization:** Dynamic JSON parsing utility for resilient profile picture loading across the app.
 - **🏗️ MVC Architecture:** Clean separation of concerns across the full stack.
 
