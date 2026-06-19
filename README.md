@@ -22,6 +22,10 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
   - **Notification Badge:** Instant visual indicators for new pending requests.
   - **My Buddy Dashboard:** View current active buddy details, chat/call options, and team management (Leave Team) with instant, real-time UI state synchronization.
   - **Robust Fkey Database Handling:** Safely handles database constraints when leaving teams by dynamically resetting `buddy_team_id` references on members before deletion.
+- **🗺️ Advanced Map Routing & Real-time Job Sync:**
+  - **OSRM Map Router Integration:** Renders accurate, dynamic routes along actual roads using the Open Source Routing Machine (OSRM) API instead of straight lines, drawing distinct paths from driver-to-pickup (blue) and pickup-to-destination (green).
+  - **Real-time Job Syncing:** Dynamically updates map states when any teammate accepts a job. Listens to database events and syncs current job state (e.g. status changes: "ถึงจุดนัดหมาย", "กำลังเดินทาง", "เสร็จสิ้น") instantly between buddy devices via Supabase Realtime Broadcast.
+  - **Correct Destination Mapping:** Direct extraction of accurate customer pickup and drop-off coordinates from the `requestbyuser` data model, displaying precise locations on both driver/buddy devices.
 - **📋 Driver Problem & Expense Reporting:**
   - **Multi-Status Filter:** View and filter submitted reports by status: "ทั้งหมด" (All), "กำลังดำเนินการ" (In Progress), and "เสร็จสิ้น" (Completed).
   - **Detailed Report Sheet:** Interactive modal sheets showing report details, date, status, custom category icons, and receipt images.
