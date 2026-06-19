@@ -129,11 +129,13 @@ class _MyBuddyPageState extends State<MyBuddyPage> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text("My Buddy", style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.black,
+        title: const Text("My Buddy", style: TextStyle(color: Color(0xFF1E1E1E), fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Color(0xFF1E1E1E)),
         elevation: 0,
+        shape: Border(bottom: BorderSide(color: Colors.black.withOpacity(0.05))),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -148,16 +150,16 @@ class _MyBuddyPageState extends State<MyBuddyPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.group_off, size: 80, color: Colors.white24),
+          const Icon(Icons.group_off, size: 80, color: Colors.black26),
           const SizedBox(height: 20),
-          Text(
+          const Text(
             "You don't have a buddy yet",
-            style: TextStyle(color: Colors.white70, fontSize: 18),
+            style: TextStyle(color: Color(0xFF1E1E1E), fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
-          Text(
+          const Text(
             "Go to search and find someone nearby!",
-            style: TextStyle(color: Colors.white38),
+            style: TextStyle(color: Colors.black54),
           ),
         ],
       ),
@@ -174,25 +176,39 @@ class _MyBuddyPageState extends State<MyBuddyPage> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: colorScheme.surface,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
+              border: Border.all(color: Colors.black.withOpacity(0.06), width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
             ),
             child: Column(
               children: [
-                CircleAvatar(
-                  radius: 60,
-                  backgroundImage: NetworkImage(ImageUtils.getProfileImageUrl(profile['regisimagepath'])),
-                  onBackgroundImageError: (_, __) {},
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: colorScheme.primary.withOpacity(0.8), width: 2),
+                  ),
+                  child: CircleAvatar(
+                    radius: 58,
+                    backgroundImage: NetworkImage(ImageUtils.getProfileImageUrl(profile['regisimagepath'])),
+                    onBackgroundImageError: (_, __) {},
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Text(
                   "${profile['firstname']} ${profile['lastname']}",
-                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Color(0xFF1E1E1E), fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   "@${profile['username']}",
-                  style: TextStyle(color: colorScheme.primary, fontSize: 16),
+                  style: TextStyle(color: colorScheme.primary, fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 30),
                 Row(
@@ -245,15 +261,15 @@ class _MyBuddyPageState extends State<MyBuddyPage> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withOpacity(0.12),
               shape: BoxShape.circle,
-              border: Border.all(color: color.withOpacity(0.3)),
+              border: Border.all(color: color.withOpacity(0.25)),
             ),
-            child: Icon(icon, color: color),
+            child: Icon(icon, color: color == const Color(0xFF7CE5FF) ? Colors.blue : color),
           ),
         ),
         const SizedBox(height: 8),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        Text(label, style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w500)),
       ],
     );
   }

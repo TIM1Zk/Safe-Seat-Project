@@ -36,7 +36,9 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
 - **💰 Upgraded Wallet System:** Premium styled UI cards displaying real-time balance, custom withdrawal input flow, and withdrawal transaction history screen.
 - **📍 Location & Team Tracking:** Automatic capture and storage of leader's GPS coordinates every 30 seconds into `buddyteam` database table when active.
 - **🖼️ Image Optimization:** Dynamic JSON parsing utility for resilient profile picture loading across the app.
+- **🎨 Premium UI & Experience Enhancements:** Beautiful white-themed search buddy cards, modern search input fields with subtle shadow borders, and redesigned buddy profile/dashboard cards for a cleaner, more interactive user experience.
 - **🏗️ MVC Architecture:** Clean separation of concerns across the full stack.
+
 
 ---
 

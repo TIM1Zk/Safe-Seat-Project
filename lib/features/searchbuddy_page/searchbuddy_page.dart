@@ -118,39 +118,123 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
         builder: (context, setModalState) => Container(
           height: MediaQuery.of(context).size.height * 0.7,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+            color: Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+            border: Border.all(color: Colors.black12, width: 1),
           ),
           child: Column(
             children: [
               const SizedBox(height: 12),
               Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 20),
-              Text("Buddy Requests", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
-              const SizedBox(height: 10),
+              Text("Buddy Requests", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22, letterSpacing: -0.5)),
+              const SizedBox(height: 6),
               const Text("Requests expire after 5 minutes", style: TextStyle(color: Colors.white54, fontSize: 12)),
               const SizedBox(height: 20),
               Expanded(
                 child: _pendingRequests.isEmpty
-                    ? const Center(child: Text("No pending requests", style: TextStyle(color: Colors.white38)))
+                    ? const Center(child: Text("No pending requests", style: TextStyle(color: Colors.black)))
                     : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount: _pendingRequests.length,
                         itemBuilder: (context, index) {
                           final req = _pendingRequests[index];
                           final sender = req['sender'] ?? {};
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundImage: NetworkImage(ImageUtils.getProfileImageUrl(sender['regisimagepath'])),
-                              onBackgroundImageError: (_, __) {},
+                          final name = sender['firstname'] != null 
+                              ? "${sender['firstname']} ${sender['lastname'] ?? ''}" 
+                              : sender['username'] ?? 'Unknown';
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F9FA),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.black.withOpacity(0.06),
+                              ),
                             ),
-                            title: Text(sender['username'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
-                            subtitle: const Text("Wants to be your buddy", style: TextStyle(color: Colors.white54, fontSize: 12)),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(icon: const Icon(Icons.check_circle, color: Colors.green), onPressed: () async { await _acceptRequest(req['buddyteamid']); }),
-                                  IconButton(icon: const Icon(Icons.cancel, color: Colors.red), onPressed: () async { await _rejectRequest(req['buddyteamid']); setModalState(() {}); if (_pendingRequests.isEmpty) Navigator.pop(context); }),
-                                ],
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.4), width: 1),
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 26,
+                                    backgroundImage: NetworkImage(ImageUtils.getProfileImageUrl(sender['regisimagepath'])),
+                                    onBackgroundImageError: (_, __) {},
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "@${sender['username'] ?? 'unknown'}",
+                                        style: const TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () async {
+                                        await _acceptRequest(req['buddyteamid']);
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.green,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    GestureDetector(
+                                      onTap: () async {
+                                        await _rejectRequest(req['buddyteamid']);
+                                        setModalState(() {});
+                                        if (_pendingRequests.isEmpty) Navigator.pop(context);
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           );
                         },
@@ -201,7 +285,7 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFFF8F9FA),
       body: Stack(
         children: [
           Positioned(
@@ -210,7 +294,7 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                  colors: [colorScheme.primary.withOpacity(0.15), Colors.transparent],
+                  colors: [colorScheme.primary.withOpacity(0.08), Colors.transparent],
                 ),
               ),
             ),
@@ -229,9 +313,9 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("Find Your Buddy", style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: -0.5)),
+                                Text("Find Your Buddy", style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold, color: const Color(0xFF1E1E1E), letterSpacing: -0.5)),
                                 const SizedBox(height: 4),
-                                Text("Connect with people nearby", style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white60)),
+                                Text("Connect with people nearby", style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54)),
                               ],
                             ),
                             Row(
@@ -270,10 +354,17 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
                                 _fetchBuddies(query: _searchController.text);
                               },
                               selectedColor: colorScheme.primary,
-                              labelStyle: TextStyle(color: isSelected ? Colors.black : Colors.white),
-                              backgroundColor: colorScheme.surface,
-                              side: BorderSide.none,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              labelStyle: TextStyle(
+                                color: isSelected ? Colors.black : Colors.white70,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              backgroundColor: const Color(0xFFF1F3F5),
+                              side: BorderSide(
+                                color: isSelected ? colorScheme.primary : Colors.black.withOpacity(0.04),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
                               showCheckmark: false,
                             ),
                           );
@@ -307,8 +398,19 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: colorScheme.surface, shape: BoxShape.circle, border: Border.all(color: colorScheme.primary.withOpacity(0.2))),
-        child: Icon(icon, color: colorScheme.primary),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.black.withOpacity(0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            )
+          ],
+        ),
+        child: Icon(icon, color: const Color(0xFF1E1E1E)),
       ),
     );
   }
@@ -320,8 +422,19 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: colorScheme.surface, shape: BoxShape.circle, border: Border.all(color: colorScheme.primary.withOpacity(0.2))),
-            child: Icon(Icons.notifications_none, color: colorScheme.primary),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.black.withOpacity(0.08)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                )
+              ],
+            ),
+            child: const Icon(Icons.notifications_none, color: Color(0xFF1E1E1E)),
           ),
           if (_pendingRequests.isNotEmpty)
             Positioned(
@@ -340,15 +453,26 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
 
   Widget _buildSearchBar(ColorScheme colorScheme) {
     return Container(
-      decoration: BoxDecoration(color: colorScheme.surface, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.black.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: TextField(
         controller: _searchController, onChanged: _onSearchChanged,
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(color: Color(0xFF1E1E1E)),
         decoration: InputDecoration(
-          hintText: "Search by name or interest...", hintStyle: const TextStyle(color: Colors.white54),
-          prefixIcon: Icon(Icons.search, color: colorScheme.primary),
-          suffixIcon: IconButton(icon: Icon(Icons.tune, color: colorScheme.primary, size: 20), onPressed: () => _fetchBuddies(query: _searchController.text)),
-          border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          hintText: "Search by name or interest...", hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
+          prefixIcon: const Icon(Icons.search, color: Colors.black54),
+          suffixIcon: IconButton(icon: const Icon(Icons.tune, color: Colors.black54, size: 20), onPressed: () => _fetchBuddies(query: _searchController.text)),
+          border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
       ),
     );
@@ -360,25 +484,116 @@ class _SearchbuddyPageState extends State<SearchbuddyPage> {
     final distance = buddy['distance'] ?? 'Nearby';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16), padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: colorScheme.surface, borderRadius: BorderRadius.circular(20), border: Border.all(color: colorScheme.primary.withOpacity(0.1))),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.black.withOpacity(0.06),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          )
+        ],
+      ),
       child: Row(
         children: [
-          CircleAvatar(radius: 35, backgroundImage: NetworkImage(image)),
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: colorScheme.primary.withOpacity(0.8), width: 1.5),
+            ),
+            child: CircleAvatar(
+              radius: 32,
+              backgroundImage: NetworkImage(image),
+              onBackgroundImageError: (_, __) {},
+            ),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)), Text(distance, style: TextStyle(color: colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w600))]),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                          color: const Color(0xFF1E1E1E),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        distance,
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 6),
-                Text(buddy['bio'] ?? "No bio available", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                Text(
+                  buddy['bio'] ?? "No bio available",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.black54, fontSize: 12),
+                ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: OutlinedButton(onPressed: () {}, style: OutlinedButton.styleFrom(side: BorderSide(color: colorScheme.primary), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const Text("View Profile"))),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.black26),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: const Text("View Profile", style: TextStyle(fontSize: 13, color: Colors.black87)),
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: ElevatedButton(onPressed: () => _sendRequest(buddy['username']), style: ElevatedButton.styleFrom(backgroundColor: colorScheme.primary, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const Text("Send Request"))),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => _sendRequest(buddy['username']),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: const Color(0xFF1E1E1E),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          "Send Request",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
