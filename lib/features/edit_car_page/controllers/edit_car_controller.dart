@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_project/core/network/api_service.dart';
 import 'package:mobile_project/features/edit_car_page/models/driver_car.dart';
+import 'package:dio/dio.dart' as dio;
 
 class EditCarController extends ChangeNotifier {
   DriverCar? driverCar;
@@ -45,22 +47,43 @@ class EditCarController extends ChangeNotifier {
     required String carModel,
     required String carColor,
     required String carPlate,
+    String? frontImagePath,
+    String? sideImagePath,
   }) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
-      final updatedData = {
-        'drivercar': {
-          'carbrand': carBrand,
-          'carmodel': carModel,
-          'carcolor': carColor,
-          'carplate': carPlate,
-        }
+      final Map<String, dynamic> driverCarMap = {
+        'carbrand': carBrand,
+        'carmodel': carModel,
+        'carcolor': carColor,
+        'carplate': carPlate,
       };
 
-      final response = await ApiService.put('/users/$username', data: updatedData);
+      // Since we need to support file uploads, we use FormData
+      final Map<String, dynamic> dataMap = {
+        'drivercar': jsonEncode(driverCarMap),
+      };
+
+      if (frontImagePath != null && frontImagePath.isNotEmpty) {
+        dataMap['frontImage'] = await dio.MultipartFile.fromFile(
+          frontImagePath,
+          filename: 'front_car.jpg',
+        );
+      }
+
+      if (sideImagePath != null && sideImagePath.isNotEmpty) {
+        dataMap['sideImage'] = await dio.MultipartFile.fromFile(
+          sideImagePath,
+          filename: 'side_car.jpg',
+        );
+      }
+
+      final formData = dio.FormData.fromMap(dataMap);
+
+      final response = await ApiService.put('/users/$username', data: formData);
 
       if (response.statusCode == 200 && response.data != null) {
         final carJson = response.data['drivercar'];

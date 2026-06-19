@@ -1,4 +1,7 @@
+import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_project/features/profile_page/profile_page.dart';
 import 'package:mobile_project/features/edit_car_page/controllers/edit_car_controller.dart';
 
@@ -17,6 +20,11 @@ class _EditCarPageState extends State<EditCarPage> {
   final TextEditingController _modelController = TextEditingController();
   final TextEditingController _colorController = TextEditingController();
   final TextEditingController _plateController = TextEditingController();
+
+  String? _selectedFrontPath;
+  String? _selectedSidePath;
+  String? _fetchedFrontUrl;
+  String? _fetchedSideUrl;
 
   late EditCarController _controller;
 
@@ -40,11 +48,14 @@ class _EditCarPageState extends State<EditCarPage> {
 
   void _onControllerUpdate() {
     if (_controller.driverCar != null && _brandController.text.isEmpty) {
-      // โหลดข้อมูลรถปัจจุบันมาแสดงในช่องกรอกข้อมูลครั้งแรก
       _brandController.text = _controller.driverCar!.carBrand;
       _modelController.text = _controller.driverCar!.carModel;
       _colorController.text = _controller.driverCar!.carColor;
       _plateController.text = _controller.driverCar!.carPlate;
+
+      // Parse current images
+      _fetchedFrontUrl = _controller.driverCar!.frontImagePath;
+      _fetchedSideUrl = _controller.driverCar!.sideImagePath;
     }
 
     if (_controller.errorMessage != null && mounted) {
@@ -54,8 +65,61 @@ class _EditCarPageState extends State<EditCarPage> {
           backgroundColor: Colors.redAccent,
         ),
       );
-      _controller.errorMessage = null; // เคลียร์ข้อความแจ้งเตือนความผิดพลาด
+      _controller.errorMessage = null;
     }
+  }
+
+  Future<void> _pickImage(bool isFront) async {
+    final picker = ImagePicker();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.black),
+                title: const Text('เลือกจากคลังภาพ (Gallery)'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+                  if (image != null) {
+                    setState(() {
+                      if (isFront) {
+                        _selectedFrontPath = image.path;
+                      } else {
+                        _selectedSidePath = image.path;
+                      }
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera, color: Colors.black),
+                title: const Text('ถ่ายภาพใหม่ (Camera)'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final XFile? image = await picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+                  if (image != null) {
+                    setState(() {
+                      if (isFront) {
+                        _selectedFrontPath = image.path;
+                      } else {
+                        _selectedSidePath = image.path;
+                      }
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _updateCar() async {
@@ -66,19 +130,20 @@ class _EditCarPageState extends State<EditCarPage> {
       carModel: _modelController.text.trim(),
       carColor: _colorController.text.trim(),
       carPlate: _plateController.text.trim(),
+      frontImagePath: _selectedFrontPath,
+      sideImagePath: _selectedSidePath,
     );
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("บันทึกข้อมูลรถยนต์เรียบร้อยแล้ว!"),
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          backgroundColor: const Color(0xFF2ECD65),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-      
-      // นำกลับไปยังหน้าโปรไฟล์และรีเฟรชข้อมูลใหม่
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -93,164 +158,365 @@ class _EditCarPageState extends State<EditCarPage> {
 
   @override
   Widget build(BuildContext context) {
-    const accentColor = Color(0xFF7CE5FF); // Frosted Blue
-    final theme = Theme.of(context);
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("แก้ไขข้อมูลรถยนต์"),
-      ),
-      body: ListenableBuilder(
-        listenable: _controller,
-        builder: (context, child) {
-          if (_controller.isLoading && _brandController.text.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: ListenableBuilder(
+          listenable: _controller,
+          builder: (context, child) {
+            if (_controller.isLoading && _brandController.text.isEmpty) {
+              return const Center(child: CircularProgressIndicator(color: Colors.black));
+            }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  // --- ส่วนหัวแสดงไอคอนรถยนต์พรีเมียม ---
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 25),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.05),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: accentColor.withOpacity(0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.directions_car_filled_rounded,
-                      size: 60,
-                      color: accentColor,
-                    ),
-                  ),
-
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: Colors.white.withOpacity(0.05)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "ข้อมูลยานพาหนะ",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // --- Custom Top App Bar ---
+                    Row(
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          alignment: Alignment.centerLeft,
+                          icon: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.black, width: 3),
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.black,
+                              size: 20,
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          _buildTextField(
-                            controller: _brandController,
-                            label: "ยี่ห้อรถยนต์",
-                            icon: Icons.branding_watermark_outlined,
-                            validator: (value) => value!.isEmpty ? "กรุณากรอกยี่ห้อรถยนต์" : null,
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        const Spacer(),
+                        const Text(
+                          "แก้ไขยานพาหนะ",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
                           ),
-                          const SizedBox(height: 15),
-                          _buildTextField(
-                            controller: _modelController,
-                            label: "รุ่นรถยนต์",
-                            icon: Icons.format_list_bulleted_rounded,
-                            validator: (value) => value!.isEmpty ? "กรุณากรอกรุ่นรถยนต์" : null,
-                          ),
-                          const SizedBox(height: 15),
-                          _buildTextField(
-                            controller: _colorController,
-                            label: "สีรถยนต์",
-                            icon: Icons.color_lens_outlined,
-                            validator: (value) => value!.isEmpty ? "กรุณากรอกสีรถยนต์" : null,
-                          ),
-                          const SizedBox(height: 15),
-                          _buildTextField(
-                            controller: _plateController,
-                            label: "ทะเบียนรถยนต์",
-                            icon: Icons.badge_outlined,
-                            validator: (value) => value!.isEmpty ? "กรุณากรอกทะเบียนรถยนต์" : null,
-                          ),
-                        ],
+                        ),
+                        const Spacer(),
+                        const SizedBox(width: 44), // alignment helper
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withOpacity(0.08),
+                            Colors.black.withOpacity(0.01)
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 30),
-                  ElevatedButton(
-                    onPressed: _controller.isLoading ? null : _updateCar,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accentColor,
-                      foregroundColor: const Color(0xFF121212),
-                      minimumSize: const Size(double.infinity, 55),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
+                    const SizedBox(height: 16),
+
+                    // --- รายละเอียดยานพาหนะ ---
+                    const Text(
+                      "รายละเอียดยานพาหนะ",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black54,
                       ),
-                      elevation: 0,
                     ),
-                    child: _controller.isLoading 
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(color: Color(0xFF121212), strokeWidth: 3),
-                          )
-                        : const Text(
-                            "บันทึกข้อมูลรถยนต์",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                    const SizedBox(height: 20),
+
+                    // --- ยี่ห้อยานพาหนะคืออะไร? ---
+                    _buildFormLabel("ยี่ห้อยานพาหนะคืออะไร?"),
+                    _buildTextField(
+                      controller: _brandController,
+                      hintText: "ตัวอย่าง Toyota",
+                      validator: (value) => value!.isEmpty ? "กรุณากรอกยี่ห้อยานพาหนะ" : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- รุ่นรถของคุณคืออะไร? ---
+                    _buildFormLabel("รุ่นรถของคุณคืออะไร?"),
+                    _buildTextField(
+                      controller: _modelController,
+                      hintText: "ตัวอย่าง supra A80",
+                      validator: (value) => value!.isEmpty ? "กรุณากรอกรุ่นรถยนต์" : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- สีรถยนต์ & ทะเบียนรถยนต์ side-by-side ---
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFormLabel("สีรถของคุณคือสีอะไร"),
+                              _buildTextField(
+                                controller: _colorController,
+                                hintText: "ตัวอย่าง สีดำ",
+                                validator: (value) => value!.isEmpty ? "กรุณากรอกสีรถยนต์" : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFormLabel("ป้ายทะเบียนรถของคุณคืออะไร"),
+                              _buildTextField(
+                                controller: _plateController,
+                                hintText: "ตัวอย่าง สวย 1234",
+                                validator: (value) => value!.isEmpty ? "กรุณากรอกทะเบียนรถยนต์" : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 28),
+
+                    // --- อัพโหลดรูปภาพยานพาหนะ ---
+                    const Text(
+                      "อัพโหลดรูปภาพยานพาหนะ",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _pickImage(true),
+                            child: CustomPaint(
+                              painter: DottedBorderPainter(color: Colors.black, strokeWidth: 1.5, gap: 4),
+                              child: Container(
+                                height: 140,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: _buildImagePreview(_selectedFrontPath, _fetchedFrontUrl, "ด้านหน้า"),
+                              ),
                             ),
                           ),
-                  ),
-                ],
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _pickImage(false),
+                            child: CustomPaint(
+                              painter: DottedBorderPainter(color: Colors.black, strokeWidth: 1.5, gap: 4),
+                              child: Container(
+                                height: 140,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: _buildImagePreview(_selectedSidePath, _fetchedSideUrl, "ด้านข้าง"),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 36),
+
+                    // --- Save Vehicle Button ---
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _controller.isLoading ? null : _updateCar,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2ECD65),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _controller.isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(Icons.check_circle_outline, size: 24),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    "Save Vehicle",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 
-  InputDecoration _buildInputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-      prefixIcon: Icon(icon, color: const Color(0xFF7CE5FF)),
-      filled: true,
-      fillColor: const Color(0xFF1E1E1E),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: Color(0xFF7CE5FF), width: 2),
+  Widget _buildFormLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
       ),
     );
   }
 
   Widget _buildTextField({
     required TextEditingController controller,
-    required String label,
-    required IconData icon,
+    required String hintText,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
-      style: const TextStyle(color: Colors.white),
-      decoration: _buildInputDecoration(label, icon),
       validator: validator,
+      style: const TextStyle(fontSize: 16, color: Colors.black),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+        filled: true,
+        fillColor: const Color(0xFFE2E2E2),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.black54, width: 1.5),
+        ),
+      ),
     );
   }
+
+  Widget _buildImagePreview(String? localPath, String? networkUrl, String label) {
+    if (localPath != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Image.file(
+          File(localPath),
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+        ),
+      );
+    } else if (networkUrl != null && networkUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Image.network(
+          networkUrl,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) => _buildUploadPlaceholder(label),
+        ),
+      );
+    } else {
+      return _buildUploadPlaceholder(label);
+    }
+  }
+
+  Widget _buildUploadPlaceholder(String label) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(
+          Icons.cloud_upload_outlined,
+          size: 44,
+          color: Colors.black87,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class DottedBorderPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double gap;
+
+  DottedBorderPainter({
+    this.color = Colors.black,
+    this.strokeWidth = 1.0,
+    this.gap = 5.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    final RRect rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      const Radius.circular(15),
+    );
+    path.addRRect(rrect);
+
+    final Path dashPath = Path();
+    double distance = 0.0;
+    for (final PathMetric measurePath in path.computeMetrics()) {
+      while (distance < measurePath.length) {
+        dashPath.addPath(
+          measurePath.extractPath(distance, distance + gap),
+          Offset.zero,
+        );
+        distance += gap * 2;
+      }
+    }
+    canvas.drawPath(dashPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

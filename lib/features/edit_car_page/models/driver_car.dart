@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class DriverCar {
   final String carBrand;
   final String carModel;
@@ -12,6 +14,30 @@ class DriverCar {
     required this.carPlate,
     required this.carImagePath,
   });
+
+  String? get frontImagePath {
+    try {
+      if (carImagePath.startsWith('{')) {
+        final Map<String, dynamic> decoded = jsonDecode(carImagePath);
+        if (decoded.containsKey('front') && decoded['front'] != null) {
+          return decoded['front'].toString();
+        }
+      }
+    } catch (_) {}
+    return carImagePath.isNotEmpty && !carImagePath.startsWith('{') ? carImagePath : null;
+  }
+
+  String? get sideImagePath {
+    try {
+      if (carImagePath.startsWith('{')) {
+        final Map<String, dynamic> decoded = jsonDecode(carImagePath);
+        if (decoded.containsKey('side') && decoded['side'] != null) {
+          return decoded['side'].toString();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
 
   factory DriverCar.fromJson(Map<String, dynamic> json) {
     return DriverCar(

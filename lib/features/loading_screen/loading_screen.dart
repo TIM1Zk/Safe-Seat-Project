@@ -51,83 +51,110 @@ class _LoadingScreenState extends State<LoadingScreen> {
     const accentColor = Color(0xFF7CE5FF); // Frosted Blue
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0D0D0D), // Black
-              Color(0xFF1E1E1E), // Deep Charcoal
-            ],
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // 1. Background Gradient & Decorative Orbs (Light Theme)
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFF8F9FA),
+                  Colors.white,
+                  Color(0xFFF1F3F5),
+                ],
+              ),
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // App Logo or Icon (Driver Themed)
-            Container(
-              padding: const EdgeInsets.all(25),
+          Positioned(
+            top: -100,
+            right: -50,
+            child: Container(
+              width: 300,
+              height: 300,
               decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.1),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: accentColor.withOpacity(0.3),
-                  width: 2,
+                color: const Color(0xFF7CE5FF).withOpacity(0.15),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -80,
+            left: -50,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF7CE5FF).withOpacity(0.08),
+              ),
+            ),
+          ),
+
+          // 2. Main Content
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // App Logo or Icon (Driver Themed)
+                Container(
+                  padding: const EdgeInsets.all(25),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFE2E8F0),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.drive_eta_rounded,
+                    size: 80,
+                    color: Colors.black87,
+                  ),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: accentColor.withOpacity(0.1),
-                    blurRadius: 30,
-                    spreadRadius: 5,
+                const SizedBox(height: 35),
+                // App Title
+                const Text(
+                  'Safe Seat',
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black87,
+                    letterSpacing: -0.5,
                   ),
-                ],
-              ),
-              child: const Icon(
-                Icons.drive_eta_rounded,
-                size: 90,
-                color: accentColor,
-              ),
-            ),
-            const SizedBox(height: 35),
-            // App Title
-            const Text(
-              'Safe Seat',
-              style: TextStyle(
-                fontSize: 45,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -1,
-                shadows: [
-                  Shadow(
-                    blurRadius: 15.0,
-                    color: Colors.black45,
-                    offset: Offset(3.0, 3.0),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'DRIVER EDITION',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 4,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 80),
+                // Loading Indicator (Black)
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
+                  strokeWidth: 3.5,
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              'DRIVER EDITION',
-              style: TextStyle(
-                fontSize: 16,
-                color: accentColor.withOpacity(0.8),
-                fontWeight: FontWeight.w800,
-                letterSpacing: 4,
-              ),
-            ),
-            const SizedBox(height: 80),
-            // Loading Indicator (Frosted Blue)
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-              strokeWidth: 3.5,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -30,12 +30,34 @@ class _MapPageState extends State<MapPage> {
   RealtimeChannel? _teamChannel;
   StreamSubscription<List<Map<String, dynamic>>>? _teamStatusSubscription;
   bool _isJobOfferOpen = false;
+  // ข้อมูลลูกค้าและรถยนต์สำหรับงานที่เด้งเข้ามา
+  String? _clientName;
+  String? _clientProfileImage;
+  String? _clientPhone;
+  String? _carDetails;
+  String? _carSubdetails;
+  String? _jobFee;
+  String? _paymentMethod;
+  String? _gearType;
+  String? _jobDistance;
+  dynamic _activeRequestId;
+
+  // Active job states
+  bool _hasActiveJob = false;
+  String _currentJobStatus = 'กำลังไปรับ';
+  String? _pickupName;
+  String? _dropoffName;
+  double? _pickupLat;
+  double? _pickupLng;
+  double? _dropoffLat;
+  double? _dropoffLng;
 
   Position? _currentPosition;
   String _currentAddress = "กำลังดึงข้อมูลที่อยู่พิกัด GPS ปัจจุบัน...";
 
 
   List<Marker> _markers = [];
+  List<Polyline> _polylines = [];
   String? _selectedPlaceName;
   String? _selectedPlaceAddress;
 
@@ -114,7 +136,7 @@ class _MapPageState extends State<MapPage> {
       },
     ).subscribe();
 
-    // 2. Listen for Team Status changes (if partner accepts job)
+    // 2. Listen for Team Status changes (if partner accepts job or toggles online status)
     _teamStatusSubscription = supabase
         .from('buddyteam')
         .stream(primaryKey: ['buddyteamid'])
@@ -122,9 +144,21 @@ class _MapPageState extends State<MapPage> {
         .listen((List<Map<String, dynamic>> data) {
       if (data.isNotEmpty) {
         final team = data.first;
-        if (team['teamstatus'] == 'Busy') {
-          // If status is Busy, meaning the job was accepted
+        final status = team['teamstatus']?.toString();
+        
+        if (status == 'Busy') {
           _closeJobOfferDialog();
+        }
+        
+        // Sync local isOnline state with DB teamstatus
+        if (mounted) {
+          setState(() {
+            if (status == 'Ready') {
+              isOnline = true;
+            } else if (status == 'Offline') {
+              isOnline = false;
+            }
+          });
         }
       }
     });
@@ -220,60 +254,109 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  void _showNewJobOfferDialog(Map<String, dynamic> payload) {
-    if (_isJobOfferOpen) return; // Prevent multiple dialogs
-    
-    setState(() {
-      _isJobOfferOpen = true;
-    });
+  Future<void> _fetchJobOfferDetails(Map<String, dynamic> payload) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = payload['user_id']?.toString() ?? '';
+      final userCarId = payload['user_car_id'];
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("งานใหม่เข้า!"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("ราคา: ${payload['requestfee'] ?? 0} บาท"),
-              const SizedBox(height: 8),
-              Text("ระยะทาง: ${payload['reqdistance'] ?? 0} กม."),
-              const SizedBox(height: 8),
-              if (payload['note'] != null && payload['note'].toString().isNotEmpty)
-                Text("หมายเหตุ: ${payload['note']}"),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                setState(() {
-                  _isJobOfferOpen = false;
-                });
-              },
-              child: const Text("ปฏิเสธ"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                setState(() {
-                  _isJobOfferOpen = false;
-                });
-                _acceptTeamJob(payload['requestid']);
-              },
-              child: const Text("รับงาน"),
-            ),
-          ],
-        );
-      },
-    );
+      // 1. ดึงข้อมูล User (ลูกค้า)
+      Map<String, dynamic>? userData;
+      if (userId.isNotEmpty) {
+        final userRes = await supabase
+            .from('User')
+            .select('name, profileimagepath, phoneno')
+            .eq('phoneno', userId)
+            .maybeSingle();
+        userData = userRes;
+      }
+
+      // 2. ดึงข้อมูลรถยนต์ (usercar)
+      Map<String, dynamic>? carData;
+      if (userCarId != null) {
+        final carRes = await supabase
+            .from('usercar')
+            .select('carbrand, carcolor, carmodel, carplate')
+            .eq('usercarid', userCarId)
+            .maybeSingle();
+        carData = carRes;
+      }
+
+      setState(() {
+        _clientName = userData?['name']?.toString() ?? 'ลูกค้าทั่วไป';
+        _clientProfileImage = userData?['profileimagepath']?.toString();
+        _clientPhone = userData?['phoneno']?.toString() ?? userId;
+
+        if (carData != null) {
+          final brand = carData['carbrand']?.toString() ?? '';
+          final model = carData['carmodel']?.toString() ?? '';
+          _carDetails = "$brand $model".trim();
+          if (_carDetails!.isEmpty) _carDetails = "รถยนต์ส่วนบุคคล";
+          
+          final color = carData['carcolor']?.toString() ?? '';
+          final plate = carData['carplate']?.toString() ?? '';
+          _carSubdetails = "${color.isNotEmpty ? 'สี$color' : ''} ทะเบียน ${plate.isNotEmpty ? plate : 'ไม่ระบุ'}".trim();
+        } else {
+          _carDetails = "รถยนต์ส่วนบุคคล";
+          _carSubdetails = "ไม่ทราบรายละเอียดรถ";
+        }
+
+        final fee = payload['requestfee'];
+        _jobFee = fee != null ? "${fee.toString()}\$" : "0.00\$";
+
+        final payMethod = payload['paymentmethod'];
+        if (payMethod == 2 || payMethod.toString().toLowerCase().contains('wallet')) {
+          _paymentMethod = "App Wallet";
+        } else {
+          _paymentMethod = "เงินสด (Cash)";
+        }
+
+        // ระบบเกียร์
+        final note = payload['note']?.toString() ?? '';
+        if (note.toLowerCase().contains('auto')) {
+          _gearType = "Auto Gear";
+        } else if (note.toLowerCase().contains('manual') || note.toLowerCase().contains('ธรรมดา')) {
+          _gearType = "Manual Gear";
+        } else {
+          _gearType = "Manual Gear"; // ค่าเริ่มต้นตามแบบร่าง
+        }
+
+        final dist = payload['reqdistance'];
+        _jobDistance = dist != null ? "${dist.toString()} km" : "0.0 km";
+
+        _activeRequestId = payload['requestid'];
+        _isJobOfferOpen = true;
+      });
+    } catch (e) {
+      debugPrint("Error fetching job offer details: $e");
+      setState(() {
+        _clientName = "ลูกค้าทั่วไป";
+        _clientPhone = payload['user_id']?.toString();
+        _carDetails = "รถยนต์ส่วนบุคคล";
+        _carSubdetails = "ไม่ทราบรายละเอียดรถ";
+        final fee = payload['requestfee'];
+        _jobFee = fee != null ? "${fee.toString()}\$" : "0.00\$";
+        _paymentMethod = "App Wallet";
+        _gearType = "Manual Gear";
+        final dist = payload['reqdistance'];
+        _jobDistance = dist != null ? "${dist.toString()} km" : "0.0 km";
+        _activeRequestId = payload['requestid'];
+        _isJobOfferOpen = true;
+      });
+    }
+  }
+
+  void _showNewJobOfferDialog(Map<String, dynamic> payload) {
+    if (!isOnline) {
+      debugPrint("Driver is offline. Ignoring job offer.");
+      return;
+    }
+    if (_isJobOfferOpen) return; // Prevent multiple dialogs
+    _fetchJobOfferDetails(payload);
   }
 
   void _closeJobOfferDialog() {
     if (_isJobOfferOpen && mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
       setState(() {
         _isJobOfferOpen = false;
       });
@@ -283,7 +366,112 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
+  void _updateJobMarkers() {
+    List<Marker> jobMarkers = [];
+    List<Polyline> jobPolylines = [];
+    
+    // 1. Driver Marker
+    if (_currentPosition != null) {
+      jobMarkers.add(
+        Marker(
+          point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          width: 80,
+          height: 80,
+          child: Transform.rotate(
+            angle: 0.785398,
+            child: const Icon(Icons.navigation, color: Colors.blue, size: 40),
+          ),
+        ),
+      );
+    }
+    
+    // 2. Pickup Marker
+    if (_pickupLat != null && _pickupLng != null) {
+      jobMarkers.add(
+        Marker(
+          point: LatLng(_pickupLat!, _pickupLng!),
+          width: 80,
+          height: 80,
+          child: const Icon(Icons.location_on, color: Colors.green, size: 48),
+        ),
+      );
+    }
+    
+    // 3. Dropoff Marker
+    if (_dropoffLat != null && _dropoffLng != null) {
+      jobMarkers.add(
+        Marker(
+          point: LatLng(_dropoffLat!, _dropoffLng!),
+          width: 80,
+          height: 80,
+          child: const Icon(Icons.location_on, color: Colors.red, size: 48),
+        ),
+      );
+    }
+    
+    // Generate route line (polylines)
+    if (_currentPosition != null && _pickupLat != null && _pickupLng != null) {
+      // Line from driver's location to pickup point (Blue line)
+      jobPolylines.add(
+        Polyline(
+          points: [
+            LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+            LatLng(_pickupLat!, _pickupLng!),
+          ],
+          color: const Color(0xFF3B82F6), // Material Blue
+          strokeWidth: 4.5,
+        ),
+      );
+    }
+    
+    if (_pickupLat != null && _pickupLng != null && _dropoffLat != null && _dropoffLng != null) {
+      // Line from pickup point to destination (Green/Emerald line)
+      jobPolylines.add(
+        Polyline(
+          points: [
+            LatLng(_pickupLat!, _pickupLng!),
+            LatLng(_dropoffLat!, _dropoffLng!),
+          ],
+          color: const Color(0xFF10B981), // Emerald Green
+          strokeWidth: 4.5,
+        ),
+      );
+    }
+    
+    setState(() {
+      _markers = jobMarkers;
+      _polylines = jobPolylines;
+    });
+    
+    // Move map camera to show pickup point
+    if (_pickupLat != null && _pickupLng != null) {
+      _moveToCoordinates(_pickupLat!, _pickupLng!, zoom: 14);
+    }
+  }
+
   Future<void> _acceptTeamJob(dynamic requestId) async {
+    // หากเป็นงานจำลอง (999) ให้เปิดหน้างานจำลองทันทีโดยไม่ต้องส่งไปหลังบ้าน
+    if (requestId == 999) {
+      if (mounted) {
+        setState(() {
+          _hasActiveJob = true;
+          _activeRequestId = requestId;
+          _currentJobStatus = 'กำลังไปรับ';
+          _pickupName = "ผับคุณหนูนิ่มประจำเชียงใหม่";
+          _dropoffName = "บ้านพักคุณหนูนิ่ม";
+          _pickupLat = 18.8972;
+          _pickupLng = 99.0112;
+          _dropoffLat = 18.8852;
+          _dropoffLng = 99.0134;
+          _updateJobMarkers();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('รับงานจำลองสำเร็จ!')),
+        );
+      }
+      return;
+    }
+
     try {
       if (_buddyTeamId == null) return;
       
@@ -297,6 +485,21 @@ class _MapPageState extends State<MapPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(response.data['message'] ?? 'รับงานสำเร็จ')),
           );
+          
+          setState(() {
+            _hasActiveJob = true;
+            _activeRequestId = requestId;
+            _currentJobStatus = 'กำลังไปรับ';
+            
+            _pickupName = "จุดนัดหมายลูกค้า";
+            _dropoffName = "จุดหมายปลายทาง";
+            _pickupLat = _currentPosition?.latitude ?? 13.7563;
+            _pickupLng = _currentPosition?.longitude ?? 100.5018;
+            _dropoffLat = (_currentPosition?.latitude ?? 13.7563) - 0.02;
+            _dropoffLng = (_currentPosition?.longitude ?? 100.5018) + 0.02;
+            
+            _updateJobMarkers();
+          });
         }
       } else {
         if (mounted) {
@@ -449,9 +652,33 @@ class _MapPageState extends State<MapPage> {
   }
 
   Widget _buildOnlineOfflineButton() {
+    // กำหนดสีปุ่มตามสถานะของสิทธิ์และการออนไลน์
+    Color buttonColor;
+    String buttonText;
+
+    if (_isLoadingLeaderStatus) {
+      buttonColor = const Color(0xFF1E1F22).withOpacity(0.5);
+      buttonText = "LOADING...";
+    } else if (!_isLeader) {
+      // สำหรับผู้ตาม (Follower) จะไม่สามารถกดปุ่มได้ ปุ่มจะแสดงเป็นสีเทาแสดงผลสถานะออนไลน์/ออฟไลน์ตามหัวหน้า
+      buttonColor = Colors.grey.withOpacity(0.5);
+      buttonText = isOnline ? "ONLINE (BUDDY)" : "OFFLINE (BUDDY)";
+    } else {
+      // สำหรับหัวหน้าทีม (Leader) แสดงสีตามปกติ
+      buttonColor = isOnline ? const Color(0xFF22C55E) : const Color(0xFF1E1F22);
+      buttonText = isOnline ? "ONLINE" : "OFFLINE";
+    }
+
     return GestureDetector(
       onTap: () async {
-        if (!_isLoadingLeaderStatus && !_isLeader) {
+        if (_isLoadingLeaderStatus) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("กำลังโหลดสถานะหัวหน้าทีม...")),
+          );
+          return;
+        }
+
+        if (!_isLeader) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("เฉพาะหัวหน้าทีมเท่านั้นที่สามารถกด Online ได้")),
           );
@@ -476,8 +703,24 @@ class _MapPageState extends State<MapPage> {
           }
         }
 
+        final newOnlineState = !isOnline;
+        
+        // Update database teamstatus
+        if (_buddyTeamId != null) {
+          try {
+            await Supabase.instance.client
+                .from('buddyteam')
+                .update({
+                  'teamstatus': newOnlineState ? 'Ready' : 'Offline',
+                })
+                .eq('buddyteamid', _buddyTeamId!);
+          } catch (e) {
+            debugPrint("Failed to update team status in DB: $e");
+          }
+        }
+
         setState(() {
-          isOnline = !isOnline;
+          isOnline = newOnlineState;
         });
         if (isOnline) {
           _forceUpdateLocation();
@@ -487,7 +730,7 @@ class _MapPageState extends State<MapPage> {
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 40),
         decoration: BoxDecoration(
-          color: isOnline ? const Color(0xFF22C55E) : const Color(0xFF1E1F22),
+          color: buttonColor,
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
@@ -508,7 +751,7 @@ class _MapPageState extends State<MapPage> {
             ),
             const SizedBox(width: 10),
             Text(
-              isOnline ? "ONLINE" : "OFFLINE",
+              buttonText,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -582,10 +825,42 @@ class _MapPageState extends State<MapPage> {
                 userAgentPackageName: 'com.example.mobile_project',
                 retinaMode: RetinaMode.isHighDensity(context),
               ),
+              PolylineLayer(
+                polylines: _polylines,
+              ),
               MarkerLayer(
                 markers: _markers,
               ),
             ],
+          ),
+
+          // ปุ่มจำลองงานเข้าสำหรับทดสอบ UI (เฉพาะโหมด Debug/พัฒนา)
+          Positioned(
+            top: 50,
+            left: 20,
+            child: FloatingActionButton.extended(
+              onPressed: () {
+                if (!isOnline) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("กรุณาเปลี่ยนสถานะเป็น ONLINE ก่อน เพื่อรับจำลองงาน")),
+                  );
+                  return;
+                }
+                _showNewJobOfferDialog({
+                  'requestid': 999,
+                  'user_id': '0812345678', // เบอร์โทรลูกค้าทดสอบ
+                  'user_car_id': 999, // ไอดีรถทดสอบ
+                  'requestfee': 10.00,
+                  'reqdistance': 5.2,
+                  'paymentmethod': 2, // 2 = App Wallet
+                  'note': 'ต้องการกระบะซิ่ง Manual Gear',
+                });
+              },
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
+              icon: const Icon(Icons.bug_report),
+              label: const Text("จำลองงานเข้า"),
+            ),
           ),
 
           // 2. ป้ายแสดงรายละเอียด Marker เมื่อถูกสัมผัสแตะ
@@ -656,9 +931,9 @@ class _MapPageState extends State<MapPage> {
               ),
             ),
 
-          // 3. ปุ่มเข็มทิศ / ตำแหน่งปัจจุบัน (ขวาล่างด้านบนปุ่ม Offline)
+          // 3. ปุ่มเข็มทิศ / ตำแหน่งปัจจุบัน (ขวาล่างด้านบนปุ่ม Offline/การรับงาน)
           Positioned(
-            bottom: 120,
+            bottom: (_isJobOfferOpen || _hasActiveJob) ? 410 : 120,
             right: 20,
             child: GestureDetector(
               onTap: () {
@@ -694,20 +969,541 @@ class _MapPageState extends State<MapPage> {
             ),
           ),
 
-          // 4. แถบปุ่ม Offline/Online และ ปุ่มค้นหา Buddy (ด้านล่างสุดของ Stack)
-          Positioned(
-            bottom: 30,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildOnlineOfflineButton(),
-                const SizedBox(width: 16),
-                _buildBuddyButton(),
-              ],
+          // ปุ่มศูนย์ความปลอดภัย (แสดงเมื่อมีงานเสนอเข้ามา หรือมีงานปัจจุบัน)
+          if (_isJobOfferOpen || _hasActiveJob)
+            Positioned(
+              bottom: 410,
+              left: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFC0C0C0),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.shield, color: Colors.black, size: 18),
+                    SizedBox(width: 6),
+                    Text(
+                      "ศูนย์ความปลอดภัย",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
+
+          // 4. แถบปุ่ม Offline/Online และ ปุ่มค้นหา Buddy หรือ Bottom Sheet รับงานใหม่ หรือ Bottom Sheet งานปัจจุบัน
+          if (!_isJobOfferOpen && !_hasActiveJob)
+            Positioned(
+              bottom: 30,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildOnlineOfflineButton(),
+                  const SizedBox(width: 16),
+                  _buildBuddyButton(),
+                ],
+              ),
+            )
+          else if (_hasActiveJob)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFB2B2B2), // พื้นหลังสีเทาเงินตามรูปตัวอย่าง
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    )
+                  ],
+                ),
+                padding: const EdgeInsets.only(top: 10, bottom: 20, left: 20, right: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ขีดสำหรับลากดึง
+                    Center(
+                      child: Container(
+                        width: 80,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: const Color(0xCC000000),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+
+                    // หัวข้อ
+                    Text(
+                      _currentJobStatus == 'กำลังไปรับ'
+                          ? "รับลูกค้าที่จุดนัดหมาย"
+                          : (_currentJobStatus == 'ถึงจุดนัดหมาย' ? "รอลูกค้าขึ้นรถ" : "กำลังเดินทางไปส่งลูกค้า"),
+                      style: const TextStyle(
+                        color: Color(0xDD000000),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+
+                    // ข้อมูลลูกค้า
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: Colors.white,
+                          backgroundImage: (_clientProfileImage != null && _clientProfileImage!.isNotEmpty)
+                              ? NetworkImage(_clientProfileImage!)
+                              : null,
+                          child: (_clientProfileImage == null || _clientProfileImage!.isEmpty)
+                              ? const Icon(Icons.person, size: 32, color: Colors.grey)
+                              : null,
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Text(
+                            _clientName ?? "คุณหญิงนุ้งนิ้ม สายบันเทิง",
+                            style: const TextStyle(
+                              color: Color(0xDD000000),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            debugPrint("Calling customer: $_clientPhone");
+                          },
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.phone,
+                              color: Colors.black,
+                              size: 26,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // เส้นทางจุดเริ่มต้นและจุดหมายปลายทาง
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          children: [
+                            const Icon(Icons.location_on, color: Colors.black87, size: 28),
+                            Container(
+                              width: 2.5,
+                              height: 60,
+                              color: Colors.black87,
+                            ),
+                            const Icon(Icons.location_on_outlined, color: Colors.black87, size: 28),
+                          ],
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _pickupName ?? "ผับคุณหนูนิ่มประจำเชียงใหม่",
+                                style: const TextStyle(
+                                  color: Color(0xDD000000),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 15),
+                              Text(
+                                "${_jobDistance ?? '3.4'} Km. Estimate 20 Min",
+                                style: const TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 15),
+                              Text(
+                                _dropoffName ?? "บ้านพักคุณหนูนิ่ม",
+                                style: const TextStyle(
+                                  color: Color(0xDD000000),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 25),
+
+                    // ปุ่มกดแสดงสถานะ (สไลด์เพื่อยืนยัน)
+                    SlideActionBtn(
+                      text: _currentJobStatus == 'กำลังไปรับ'
+                          ? "Arrived at pick up point"
+                          : (_currentJobStatus == 'ถึงจุดนัดหมาย' ? "Start Trip" : "Complete Trip"),
+                      onConfirmed: () async {
+                        if (_currentJobStatus == 'กำลังไปรับ') {
+                          try {
+                            await Supabase.instance.client
+                                .from('requestbyuser')
+                                .update({'requeststatus': 'ถึงจุดนัดหมาย'})
+                                .eq('requestid', _activeRequestId);
+                          } catch (e) {
+                            debugPrint("Error updating request status: $e");
+                          }
+                          setState(() {
+                            _currentJobStatus = 'ถึงจุดนัดหมาย';
+                          });
+                        } else if (_currentJobStatus == 'ถึงจุดนัดหมาย') {
+                          try {
+                            await Supabase.instance.client
+                                .from('requestbyuser')
+                                .update({'requeststatus': 'กำลังเดินทาง'})
+                                .eq('requestid', _activeRequestId);
+                          } catch (e) {
+                            debugPrint("Error updating request status: $e");
+                          }
+                          setState(() {
+                            _currentJobStatus = 'กำลังเดินทาง';
+                          });
+                        } else if (_currentJobStatus == 'กำลังเดินทาง') {
+                          try {
+                            await Supabase.instance.client
+                                .from('requestbyuser')
+                                .update({'requeststatus': 'completed'})
+                                .eq('requestid', _activeRequestId);
+                            
+                            if (_buddyTeamId != null) {
+                              await Supabase.instance.client
+                                  .from('buddyteam')
+                                  .update({'teamstatus': 'Ready'})
+                                  .eq('buddyteamid', _buddyTeamId!);
+                            }
+                          } catch (e) {
+                            debugPrint("Error completing request: $e");
+                          }
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("ส่งผู้โดยสารเรียบร้อยแล้ว!")),
+                          );
+                          
+                          setState(() {
+                            _hasActiveJob = false;
+                            _activeRequestId = null;
+                            _currentPosition = null;
+                            _polylines = [];
+                            _initLocation();
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFB2B2B2), // พื้นหลังสีเทาเงินตามรูปตัวอย่าง
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    )
+                  ],
+                ),
+                padding: const EdgeInsets.only(top: 10, bottom: 20, left: 20, right: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ขีดสำหรับลากดึง
+                    Container(
+                      width: 80,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: const Color(0xCC000000),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    
+                    // หัวข้อ
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "มีงานใหม่เข้ามา!",
+                          style: TextStyle(
+                            color: Color(0xDD000000),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            const Icon(Icons.gesture, color: Color(0xDD000000), size: 24),
+                            const SizedBox(width: 8),
+                            Text(
+                              _jobDistance ?? "0.0 km",
+                              style: const TextStyle(
+                                color: Color(0xDD000000),
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+
+                    // ข้อมูลลูกค้า
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: Colors.white,
+                          backgroundImage: (_clientProfileImage != null && _clientProfileImage!.isNotEmpty)
+                              ? NetworkImage(_clientProfileImage!)
+                              : null,
+                          child: (_clientProfileImage == null || _clientProfileImage!.isEmpty)
+                              ? const Icon(Icons.person, size: 32, color: Colors.grey)
+                              : null,
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Text(
+                            _clientName ?? "ลูกค้าทั่วไป",
+                            style: const TextStyle(
+                              color: Color(0xDD000000),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            debugPrint("Calling customer: $_clientPhone");
+                          },
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.phone,
+                              color: Colors.black,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ข้อมูลรถยนต์
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.directions_car, color: Color(0xDE000000)),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _carDetails ?? "รถยนต์ส่วนบุคคล",
+                                style: const TextStyle(
+                                  color: Color(0xDD000000),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                _carSubdetails ?? "ไม่ทราบรายละเอียดรถ",
+                                style: const TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ข้อมูลราคา/วิธีการจ่ายเงิน
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: const BoxDecoration(
+                            color: Colors.black,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.attach_money, color: Colors.white),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _jobFee ?? "0.00\$",
+                                style: const TextStyle(
+                                  color: Color(0xDD000000),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                _paymentMethod ?? "App Wallet",
+                                style: const TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ข้อมูลเกียร์
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.settings, color: Color(0xDE000000)),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Text(
+                            _gearType ?? "Manual Gear",
+                            style: const TextStyle(
+                              color: Color(0xDD000000),
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ปุ่มกด Accept / Denial
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              if (_activeRequestId != null) {
+                                _acceptTeamJob(_activeRequestId);
+                              }
+                              setState(() {
+                                _isJobOfferOpen = false;
+                              });
+                            },
+                            icon: const Icon(Icons.directions_car, color: Colors.black),
+                            label: const Text(
+                              "Accept",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00FF33),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _isJobOfferOpen = false;
+                              });
+                            },
+                            icon: const Icon(Icons.pan_tool, color: Colors.white),
+                            label: const Text(
+                              "Denial",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF3B30),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -772,6 +1568,103 @@ class _MapPageState extends State<MapPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class SlideActionBtn extends StatefulWidget {
+  final String text;
+  final VoidCallback onConfirmed;
+  const SlideActionBtn({super.key, required this.text, required this.onConfirmed});
+
+  @override
+  State<SlideActionBtn> createState() => _SlideActionBtnState();
+}
+
+class _SlideActionBtnState extends State<SlideActionBtn> {
+  double _dragPosition = 0.0;
+  final double _buttonHeight = 60.0;
+  final double _sliderWidth = 60.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double maxDragDistance = constraints.maxWidth - _sliderWidth;
+        
+        return Container(
+          height: _buttonHeight,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFFD6D6D6),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Stack(
+            children: [
+              // Text in the center
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 40.0), // give space for the green button
+                  child: Text(
+                    widget.text,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Slideable button
+              Positioned(
+                left: _dragPosition,
+                child: GestureDetector(
+                  onHorizontalDragUpdate: (details) {
+                    setState(() {
+                      _dragPosition += details.primaryDelta!;
+                      if (_dragPosition < 0) _dragPosition = 0;
+                      if (_dragPosition > maxDragDistance) _dragPosition = maxDragDistance;
+                    });
+                  },
+                  onHorizontalDragEnd: (details) {
+                    if (_dragPosition >= maxDragDistance * 0.8) {
+                      setState(() {
+                        _dragPosition = maxDragDistance;
+                      });
+                      widget.onConfirmed();
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        if (mounted) {
+                          setState(() {
+                            _dragPosition = 0.0;
+                          });
+                        }
+                      });
+                    } else {
+                      setState(() {
+                        _dragPosition = 0.0;
+                      });
+                    }
+                  },
+                  child: Container(
+                    width: _sliderWidth,
+                    height: _buttonHeight,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00FF33),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward,
+                      color: Colors.black,
+                      size: 30,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
