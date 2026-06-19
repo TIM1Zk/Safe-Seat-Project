@@ -47,7 +47,8 @@ class _MapPageState extends State<MapPage> {
 
   // Active job states
   bool _hasActiveJob = false;
-  String _currentJobStatus = 'กำลังไปรับ';
+  String _currentJobStatus = 'going to pickup';
+  bool _isPubJob = false;
   String? _pickupName;
   String? _dropoffName;
   double? _pickupLat;
@@ -150,15 +151,17 @@ class _MapPageState extends State<MapPage> {
               
           final reqId = innerPayload['requestid'];
           final jobData = innerPayload['job'];
+          final isPub = innerPayload['isPubJob'] == true || (jobData != null && jobData['pub_id'] != null);
           
           if (jobData != null) {
-            _fetchJobOfferDetails(jobData);
+            _fetchJobOfferDetails(jobData, isPub);
           }
           
           setState(() {
             _hasActiveJob = true;
             _activeRequestId = reqId;
-            _currentJobStatus = 'กำลังไปรับ';
+            _isPubJob = isPub;
+            _currentJobStatus = 'going to pickup';
             
             _pickupName = "จุดนัดหมายลูกค้า";
             _dropoffName = "จุดหมายปลายทาง";
@@ -186,10 +189,10 @@ class _MapPageState extends State<MapPage> {
           final newStatus = innerPayload['status']?.toString();
           
           setState(() {
-            if (newStatus == 'ถึงจุดนัดหมาย') {
-              _currentJobStatus = 'ถึงจุดนัดหมาย';
-            } else if (newStatus == 'กำลังเดินทาง') {
-              _currentJobStatus = 'กำลังเดินทาง';
+            if (newStatus == 'arrived' || newStatus == 'ถึงจุดนัดหมาย') {
+              _currentJobStatus = 'arrived';
+            } else if (newStatus == 'in progress' || newStatus == 'กำลังเดินทาง') {
+              _currentJobStatus = 'in progress';
             } else if (newStatus == 'completed') {
               _hasActiveJob = false;
               _activeRequestId = null;
@@ -252,7 +255,7 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
-  void _setupActiveJobListener(dynamic requestId) {
+  void _setupActiveJobListener(dynamic requestId, bool isPub) {
     _activeJobChannel?.unsubscribe();
     
     final supabase = Supabase.instance.client;
@@ -260,7 +263,7 @@ class _MapPageState extends State<MapPage> {
     _activeJobChannel!.onPostgresChanges(
       event: PostgresChangeEvent.update,
       schema: 'public',
-      table: 'requestbyuser',
+      table: isPub ? 'requestbypub' : 'requestbyuser',
       filter: PostgresChangeFilter(
         type: PostgresChangeFilterType.eq,
         column: 'requestid',
@@ -271,10 +274,10 @@ class _MapPageState extends State<MapPage> {
         if (updatedJob != null && mounted) {
           final dbStatus = updatedJob['requeststatus']?.toString();
           setState(() {
-            if (dbStatus == 'ถึงจุดนัดหมาย') {
-              _currentJobStatus = 'ถึงจุดนัดหมาย';
-            } else if (dbStatus == 'กำลังเดินทาง') {
-              _currentJobStatus = 'กำลังเดินทาง';
+            if (dbStatus == 'arrived' || dbStatus == 'ถึงจุดนัดหมาย') {
+              _currentJobStatus = 'arrived';
+            } else if (dbStatus == 'in progress' || dbStatus == 'กำลังเดินทาง') {
+              _currentJobStatus = 'in progress';
             } else if (dbStatus == 'completed') {
               _hasActiveJob = false;
               _activeRequestId = null;
@@ -295,33 +298,47 @@ class _MapPageState extends State<MapPage> {
   Future<void> _fetchActiveJobForTeam(int teamId) async {
     try {
       final supabase = Supabase.instance.client;
-      final activeJobs = await supabase
+      var activeJobs = await supabase
           .from('requestbyuser')
           .select('*')
           .eq('buddy_team_id', teamId)
           .neq('requeststatus', 'completed')
           .maybeSingle();
 
+      bool isPub = false;
+      if (activeJobs == null) {
+        activeJobs = await supabase
+            .from('requestbypub')
+            .select('*')
+            .eq('buddy_team_id', teamId)
+            .neq('requeststatus', 'completed')
+            .maybeSingle();
+        if (activeJobs != null) {
+          isPub = true;
+        }
+      }
+
       if (activeJobs != null) {
         final jobData = activeJobs;
         
-        await _fetchJobOfferDetails(jobData);
+        await _fetchJobOfferDetails(jobData, isPub);
         
         final reqId = jobData['requestid'];
-        _setupActiveJobListener(reqId);
+        _setupActiveJobListener(reqId, isPub);
         
         if (mounted) {
           setState(() {
             _hasActiveJob = true;
             _activeRequestId = reqId;
+            _isPubJob = isPub;
             
             final dbStatus = jobData['requeststatus']?.toString();
-            if (dbStatus == 'กำลังไปรับ') {
-              _currentJobStatus = 'กำลังไปรับ';
-            } else if (dbStatus == 'ถึงจุดนัดหมาย') {
-              _currentJobStatus = 'ถึงจุดนัดหมาย';
-            } else if (dbStatus == 'กำลังเดินทาง') {
-              _currentJobStatus = 'กำลังเดินทาง';
+            if (dbStatus == 'going to pickup' || dbStatus == 'กำลังไปรับ') {
+              _currentJobStatus = 'going to pickup';
+            } else if (dbStatus == 'arrived' || dbStatus == 'ถึงจุดนัดหมาย') {
+              _currentJobStatus = 'arrived';
+            } else if (dbStatus == 'in progress' || dbStatus == 'กำลังเดินทาง') {
+              _currentJobStatus = 'in progress';
             }
             
             _pickupName = "จุดนัดหมายลูกค้า";
@@ -431,9 +448,56 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  Future<void> _fetchJobOfferDetails(Map<String, dynamic> payload) async {
+  Future<void> _fetchJobOfferDetails(Map<String, dynamic> payload, bool isPub) async {
     try {
       final supabase = Supabase.instance.client;
+      
+      if (isPub) {
+        setState(() {
+          _clientName = payload['custname']?.toString() ?? 'ลูกค้าทั่วไป';
+          _clientProfileImage = null;
+          _clientPhone = payload['phoneno']?.toString() ?? '';
+
+          final carType = payload['requiredcartype']?.toString() ?? '';
+          if (carType == '2') {
+            _carDetails = "SUV / รถขนาดใหญ่";
+          } else {
+            _carDetails = "Sedan / รถเก๋ง";
+          }
+          final phoneEmer = payload['phoneemer']?.toString() ?? '';
+          _carSubdetails = "เบอร์ติดต่อฉุกเฉิน: ${phoneEmer.isNotEmpty ? phoneEmer : 'ไม่มี'}";
+
+          final fee = payload['requestfee'];
+          if (fee != null) {
+            final feeDouble = double.tryParse(fee.toString());
+            _jobFee = feeDouble != null ? "${feeDouble.toStringAsFixed(2)} บาท" : "${fee.toString()} บาท";
+          } else {
+            _jobFee = "0.00 บาท";
+          }
+
+          final payMethod = payload['paymentmethod'];
+          if (payMethod == 2 || payMethod.toString().toLowerCase().contains('wallet')) {
+            _paymentMethod = "App Wallet";
+          } else {
+            _paymentMethod = "เงินสด (Cash)";
+          }
+
+          _gearType = "Auto / Manual Gear";
+          
+          final dist = payload['reqdistance'];
+          if (dist != null) {
+            final distDouble = double.tryParse(dist.toString());
+            _jobDistance = distDouble != null ? "${distDouble.toStringAsFixed(2)} km" : "${dist.toString()} km";
+          } else {
+            _jobDistance = "0.0 km";
+          }
+
+          _activeRequestId = payload['requestid'];
+          _isJobOfferOpen = true;
+        });
+        return;
+      }
+
       final userId = payload['user_id']?.toString() ?? '';
       final userCarId = payload['user_car_id'];
 
@@ -561,7 +625,12 @@ class _MapPageState extends State<MapPage> {
     }
     debugPrint("[SafeSeat debug] actualPayload extracted: $actualPayload");
 
-    _fetchJobOfferDetails(actualPayload);
+    final isPub = actualPayload['isPubJob'] == true || actualPayload['pub_id'] != null;
+    setState(() {
+      _isPubJob = isPub;
+    });
+
+    _fetchJobOfferDetails(actualPayload, isPub);
   }
 
   void _closeJobOfferDialog() {
@@ -735,6 +804,7 @@ class _MapPageState extends State<MapPage> {
       final response = await ApiService.post('/buddy-team/accept-job', data: {
         'request_id': requestId,
         'buddy_team_id': _buddyTeamId,
+        'is_pub_job': _isPubJob,
       });
       
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -748,7 +818,7 @@ class _MapPageState extends State<MapPage> {
           setState(() {
             _hasActiveJob = true;
             _activeRequestId = requestId;
-            _currentJobStatus = 'กำลังไปรับ';
+            _currentJobStatus = 'going to pickup';
             
             _pickupName = "จุดนัดหมายลูกค้า";
             _dropoffName = "จุดหมายปลายทาง";
@@ -765,7 +835,7 @@ class _MapPageState extends State<MapPage> {
               _dropoffLng = (_currentPosition?.longitude ?? 100.5018) + 0.02;
             }
             
-            _setupActiveJobListener(requestId);
+            _setupActiveJobListener(requestId, _isPubJob);
             _updateJobMarkers();
           });
           
@@ -776,6 +846,7 @@ class _MapPageState extends State<MapPage> {
             payload: {
               'requestid': requestId,
               'job': jobData,
+              'isPubJob': _isPubJob,
             },
           );
         }
@@ -863,8 +934,6 @@ class _MapPageState extends State<MapPage> {
     final address = "พิกัด: " + lat.toStringAsFixed(5) + ", " + lon.toStringAsFixed(5);
     
     setState(() {
-      _selectedPlaceName = "คุณ (คนขับ Safe Seat)";
-      _selectedPlaceAddress = address;
       _currentAddress = address;
       
       _markers = [
@@ -872,15 +941,10 @@ class _MapPageState extends State<MapPage> {
           point: LatLng(lat, lon),
           width: 80,
           height: 80,
-          child: GestureDetector(
-            onTap: () {
-              _showMarkerDetails("คุณ (คนขับ Safe Seat)", address);
-            },
-            child: const Icon(
-              Icons.location_on,
-              color: Colors.red,
-              size: 48,
-            ),
+          child: const Icon(
+            Icons.location_on,
+            color: Colors.red,
+            size: 48,
           ),
         )
       ];
@@ -1112,34 +1176,7 @@ class _MapPageState extends State<MapPage> {
             ],
           ),
 
-          // ปุ่มจำลองงานเข้าสำหรับทดสอบ UI (เฉพาะโหมด Debug/พัฒนา)
-          Positioned(
-            top: 50,
-            left: 20,
-            child: FloatingActionButton.extended(
-              onPressed: () {
-                if (!isOnline) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("กรุณาเปลี่ยนสถานะเป็น ONLINE ก่อน เพื่อรับจำลองงาน")),
-                  );
-                  return;
-                }
-                _showNewJobOfferDialog({
-                  'requestid': 999,
-                  'user_id': '0812345678', // เบอร์โทรลูกค้าทดสอบ
-                  'user_car_id': 999, // ไอดีรถทดสอบ
-                  'requestfee': 10.00,
-                  'reqdistance': 5.2,
-                  'paymentmethod': 2, // 2 = App Wallet
-                  'note': 'ต้องการกระบะซิ่ง Manual Gear',
-                });
-              },
-              backgroundColor: Colors.amber,
-              foregroundColor: Colors.black,
-              icon: const Icon(Icons.bug_report),
-              label: const Text("จำลองงานเข้า"),
-            ),
-          ),
+
 
           // 2. ป้ายแสดงรายละเอียด Marker เมื่อถูกสัมผัสแตะ
           if (_selectedPlaceName != null)
@@ -1330,9 +1367,9 @@ class _MapPageState extends State<MapPage> {
 
                     // หัวข้อ
                     Text(
-                      _currentJobStatus == 'กำลังไปรับ'
-                          ? "รับลูกค้าที่จุดนัดหมาย"
-                          : (_currentJobStatus == 'ถึงจุดนัดหมาย' ? "รอลูกค้าขึ้นรถ" : "กำลังเดินทางไปส่งลูกค้า"),
+                      _currentJobStatus == 'going to pickup'
+                          ? "Going to Pickup Point"
+                          : (_currentJobStatus == 'arrived' ? "Waiting for Customer" : "On the way to Dropoff"),
                       style: const TextStyle(
                         color: Color(0xDD000000),
                         fontSize: 22,
@@ -1442,50 +1479,50 @@ class _MapPageState extends State<MapPage> {
 
                     // ปุ่มกดแสดงสถานะ (สไลด์เพื่อยืนยัน)
                     SlideActionBtn(
-                      text: _currentJobStatus == 'กำลังไปรับ'
+                      text: _currentJobStatus == 'going to pickup'
                           ? "Arrived at pick up point"
-                          : (_currentJobStatus == 'ถึงจุดนัดหมาย' ? "Start Trip" : "Complete Trip"),
+                          : (_currentJobStatus == 'arrived' ? "Start Trip" : "Complete Trip"),
                       onConfirmed: () async {
-                        if (_currentJobStatus == 'กำลังไปรับ') {
+                        if (_currentJobStatus == 'going to pickup') {
                           try {
                             await Supabase.instance.client
-                                .from('requestbyuser')
-                                .update({'requeststatus': 'ถึงจุดนัดหมาย'})
+                                .from(_isPubJob ? 'requestbypub' : 'requestbyuser')
+                                .update({'requeststatus': 'arrived'})
                                 .eq('requestid', _activeRequestId);
                             
                             _teamChannel?.send(
                               type: RealtimeListenTypes.broadcast,
                               event: 'job_status_updated',
-                              payload: {'status': 'ถึงจุดนัดหมาย'},
+                              payload: {'status': 'arrived'},
                             );
                           } catch (e) {
                             debugPrint("Error updating request status: $e");
                           }
                           setState(() {
-                            _currentJobStatus = 'ถึงจุดนัดหมาย';
+                            _currentJobStatus = 'arrived';
                           });
-                        } else if (_currentJobStatus == 'ถึงจุดนัดหมาย') {
+                        } else if (_currentJobStatus == 'arrived') {
                           try {
                             await Supabase.instance.client
-                                .from('requestbyuser')
-                                .update({'requeststatus': 'กำลังเดินทาง'})
+                                .from(_isPubJob ? 'requestbypub' : 'requestbyuser')
+                                .update({'requeststatus': 'in progress'})
                                 .eq('requestid', _activeRequestId);
                             
                             _teamChannel?.send(
                               type: RealtimeListenTypes.broadcast,
                               event: 'job_status_updated',
-                              payload: {'status': 'กำลังเดินทาง'},
+                              payload: {'status': 'in progress'},
                             );
                           } catch (e) {
                             debugPrint("Error updating request status: $e");
                           }
                           setState(() {
-                            _currentJobStatus = 'กำลังเดินทาง';
+                            _currentJobStatus = 'in progress';
                           });
-                        } else if (_currentJobStatus == 'กำลังเดินทาง') {
+                        } else if (_currentJobStatus == 'in progress') {
                           try {
                             await Supabase.instance.client
-                                .from('requestbyuser')
+                                .from(_isPubJob ? 'requestbypub' : 'requestbyuser')
                                 .update({'requeststatus': 'completed'})
                                 .eq('requestid', _activeRequestId);
                             
