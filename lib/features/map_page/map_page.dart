@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:realtime_client/src/types.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:dio/dio.dart';
 import 'package:mobile_project/core/network/api_service.dart';
 import 'package:mobile_project/core/utils/session_manager.dart';
 import 'package:mobile_project/features/profile_page/profile_page.dart';
@@ -28,6 +30,7 @@ class _MapPageState extends State<MapPage> {
   int? _buddyTeamId;
   Timer? _locationUpdateTimer;
   RealtimeChannel? _teamChannel;
+  RealtimeChannel? _activeJobChannel;
   StreamSubscription<List<Map<String, dynamic>>>? _teamStatusSubscription;
   bool _isJobOfferOpen = false;
   // ข้อมูลลูกค้าและรถยนต์สำหรับงานที่เด้งเข้ามา
@@ -80,6 +83,7 @@ class _MapPageState extends State<MapPage> {
   void dispose() {
     _locationUpdateTimer?.cancel();
     _teamChannel?.unsubscribe();
+    _activeJobChannel?.unsubscribe();
     _teamStatusSubscription?.cancel();
     _mapController.dispose();
     super.dispose();
@@ -125,7 +129,7 @@ class _MapPageState extends State<MapPage> {
   void _setupRealtimeListeners(int teamId) {
     final supabase = Supabase.instance.client;
     
-    // 1. Listen for Broadcast (New Job Offers)
+    // 1. Listen for Broadcast (New Job Offers, Accepts, and Status Updates)
     _teamChannel = supabase.channel('team_room_$teamId');
     _teamChannel!.onBroadcast(
       event: 'new_job_dispatched',
@@ -134,7 +138,74 @@ class _MapPageState extends State<MapPage> {
           _showNewJobOfferDialog(payload);
         }
       },
+    ).onBroadcast(
+      event: 'job_accepted',
+      callback: (payload) {
+        if (payload != null && mounted) {
+          _closeJobOfferDialog();
+          
+          final innerPayload = (payload.containsKey('payload') && payload['payload'] is Map)
+              ? Map<String, dynamic>.from(payload['payload'] as Map)
+              : payload;
+              
+          final reqId = innerPayload['requestid'];
+          final jobData = innerPayload['job'];
+          
+          if (jobData != null) {
+            _fetchJobOfferDetails(jobData);
+          }
+          
+          setState(() {
+            _hasActiveJob = true;
+            _activeRequestId = reqId;
+            _currentJobStatus = 'กำลังไปรับ';
+            
+            _pickupName = "จุดนัดหมายลูกค้า";
+            _dropoffName = "จุดหมายปลายทาง";
+            
+            if (jobData != null) {
+              _pickupLat = double.tryParse(jobData['pickuplatitude']?.toString() ?? '') ?? _currentPosition?.latitude ?? 13.7563;
+              _pickupLng = double.tryParse(jobData['pickuplongitude']?.toString() ?? '') ?? _currentPosition?.longitude ?? 100.5018;
+              _dropoffLat = double.tryParse(jobData['dropofflatitude']?.toString() ?? '') ?? (_pickupLat! - 0.02);
+              _dropoffLng = double.tryParse(jobData['dropofflongitude']?.toString() ?? '') ?? (_pickupLng! + 0.02);
+            }
+            
+            _isJobOfferOpen = false;
+            _updateJobMarkers();
+          });
+        }
+      },
+    ).onBroadcast(
+      event: 'job_status_updated',
+      callback: (payload) {
+        if (payload != null && mounted) {
+          final innerPayload = (payload.containsKey('payload') && payload['payload'] is Map)
+              ? Map<String, dynamic>.from(payload['payload'] as Map)
+              : payload;
+              
+          final newStatus = innerPayload['status']?.toString();
+          
+          setState(() {
+            if (newStatus == 'ถึงจุดนัดหมาย') {
+              _currentJobStatus = 'ถึงจุดนัดหมาย';
+            } else if (newStatus == 'กำลังเดินทาง') {
+              _currentJobStatus = 'กำลังเดินทาง';
+            } else if (newStatus == 'completed') {
+              _hasActiveJob = false;
+              _activeRequestId = null;
+              _polylines = [];
+              _initLocation();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("งานนี้เดินทางเสร็จสิ้นแล้ว!")),
+              );
+            }
+          });
+        }
+      },
     ).subscribe();
+
+    // On initialization, fetch the current active job if the team is already busy
+    _fetchActiveJobForTeam(teamId);
 
     // 2. Listen for Team Status changes (if partner accepts job or toggles online status)
     _teamStatusSubscription = supabase
@@ -148,6 +219,7 @@ class _MapPageState extends State<MapPage> {
         
         if (status == 'Busy') {
           _closeJobOfferDialog();
+          _fetchActiveJobForTeam(teamId);
         }
         
         // Sync local isOnline state with DB teamstatus
@@ -155,13 +227,118 @@ class _MapPageState extends State<MapPage> {
           setState(() {
             if (status == 'Ready') {
               isOnline = true;
+              if (_hasActiveJob) {
+                _hasActiveJob = false;
+                _activeRequestId = null;
+                _polylines = [];
+                _activeJobChannel?.unsubscribe();
+                _activeJobChannel = null;
+                _initLocation();
+              }
             } else if (status == 'Offline') {
               isOnline = false;
+              if (_hasActiveJob) {
+                _hasActiveJob = false;
+                _activeRequestId = null;
+                _polylines = [];
+                _activeJobChannel?.unsubscribe();
+                _activeJobChannel = null;
+                _initLocation();
+              }
             }
           });
         }
       }
     });
+  }
+
+  void _setupActiveJobListener(dynamic requestId) {
+    _activeJobChannel?.unsubscribe();
+    
+    final supabase = Supabase.instance.client;
+    _activeJobChannel = supabase.channel('active_job_$requestId');
+    _activeJobChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.update,
+      schema: 'public',
+      table: 'requestbyuser',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'requestid',
+        value: requestId,
+      ),
+      callback: (payload) {
+        final updatedJob = payload.newRecord;
+        if (updatedJob != null && mounted) {
+          final dbStatus = updatedJob['requeststatus']?.toString();
+          setState(() {
+            if (dbStatus == 'ถึงจุดนัดหมาย') {
+              _currentJobStatus = 'ถึงจุดนัดหมาย';
+            } else if (dbStatus == 'กำลังเดินทาง') {
+              _currentJobStatus = 'กำลังเดินทาง';
+            } else if (dbStatus == 'completed') {
+              _hasActiveJob = false;
+              _activeRequestId = null;
+              _polylines = [];
+              _activeJobChannel?.unsubscribe();
+              _activeJobChannel = null;
+              _initLocation();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("งานนี้เดินทางเสร็จสิ้นแล้ว!")),
+              );
+            }
+          });
+        }
+      },
+    ).subscribe();
+  }
+
+  Future<void> _fetchActiveJobForTeam(int teamId) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final activeJobs = await supabase
+          .from('requestbyuser')
+          .select('*')
+          .eq('buddy_team_id', teamId)
+          .neq('requeststatus', 'completed')
+          .maybeSingle();
+
+      if (activeJobs != null) {
+        final jobData = activeJobs;
+        
+        await _fetchJobOfferDetails(jobData);
+        
+        final reqId = jobData['requestid'];
+        _setupActiveJobListener(reqId);
+        
+        if (mounted) {
+          setState(() {
+            _hasActiveJob = true;
+            _activeRequestId = reqId;
+            
+            final dbStatus = jobData['requeststatus']?.toString();
+            if (dbStatus == 'กำลังไปรับ') {
+              _currentJobStatus = 'กำลังไปรับ';
+            } else if (dbStatus == 'ถึงจุดนัดหมาย') {
+              _currentJobStatus = 'ถึงจุดนัดหมาย';
+            } else if (dbStatus == 'กำลังเดินทาง') {
+              _currentJobStatus = 'กำลังเดินทาง';
+            }
+            
+            _pickupName = "จุดนัดหมายลูกค้า";
+            _dropoffName = "จุดหมายปลายทาง";
+            _pickupLat = double.tryParse(jobData['pickuplatitude']?.toString() ?? '') ?? _currentPosition?.latitude ?? 13.7563;
+            _pickupLng = double.tryParse(jobData['pickuplongitude']?.toString() ?? '') ?? _currentPosition?.longitude ?? 100.5018;
+            _dropoffLat = double.tryParse(jobData['dropofflatitude']?.toString() ?? '') ?? (_pickupLat! - 0.02);
+            _dropoffLng = double.tryParse(jobData['dropofflongitude']?.toString() ?? '') ?? (_pickupLng! + 0.02);
+            
+            _isJobOfferOpen = false;
+            _updateJobMarkers();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("[SafeSeat] Error fetching active job: $e");
+    }
   }
 
   void _startLocationUpdater() {
@@ -302,7 +479,12 @@ class _MapPageState extends State<MapPage> {
         }
 
         final fee = payload['requestfee'];
-        _jobFee = fee != null ? "${fee.toString()}\$" : "0.00\$";
+        if (fee != null) {
+          final feeDouble = double.tryParse(fee.toString());
+          _jobFee = feeDouble != null ? "${feeDouble.toStringAsFixed(2)} บาท" : "${fee.toString()} บาท";
+        } else {
+          _jobFee = "0.00 บาท";
+        }
 
         final payMethod = payload['paymentmethod'];
         if (payMethod == 2 || payMethod.toString().toLowerCase().contains('wallet')) {
@@ -322,7 +504,12 @@ class _MapPageState extends State<MapPage> {
         }
 
         final dist = payload['reqdistance'];
-        _jobDistance = dist != null ? "${dist.toString()} km" : "0.0 km";
+        if (dist != null) {
+          final distDouble = double.tryParse(dist.toString());
+          _jobDistance = distDouble != null ? "${distDouble.toStringAsFixed(2)} km" : "${dist.toString()} km";
+        } else {
+          _jobDistance = "0.0 km";
+        }
 
         _activeRequestId = payload['requestid'];
         _isJobOfferOpen = true;
@@ -334,12 +521,26 @@ class _MapPageState extends State<MapPage> {
         _clientPhone = payload['user_id']?.toString();
         _carDetails = "รถยนต์ส่วนบุคคล";
         _carSubdetails = "ไม่ทราบรายละเอียดรถ";
+        
         final fee = payload['requestfee'];
-        _jobFee = fee != null ? "${fee.toString()}\$" : "0.00\$";
+        if (fee != null) {
+          final feeDouble = double.tryParse(fee.toString());
+          _jobFee = feeDouble != null ? "${feeDouble.toStringAsFixed(2)} บาท" : "${fee.toString()} บาท";
+        } else {
+          _jobFee = "0.00 บาท";
+        }
+        
         _paymentMethod = "App Wallet";
         _gearType = "Manual Gear";
+        
         final dist = payload['reqdistance'];
-        _jobDistance = dist != null ? "${dist.toString()} km" : "0.0 km";
+        if (dist != null) {
+          final distDouble = double.tryParse(dist.toString());
+          _jobDistance = distDouble != null ? "${distDouble.toStringAsFixed(2)} km" : "${dist.toString()} km";
+        } else {
+          _jobDistance = "0.0 km";
+        }
+        
         _activeRequestId = payload['requestid'];
         _isJobOfferOpen = true;
       });
@@ -352,7 +553,15 @@ class _MapPageState extends State<MapPage> {
       return;
     }
     if (_isJobOfferOpen) return; // Prevent multiple dialogs
-    _fetchJobOfferDetails(payload);
+
+    // Extract the actual payload if it is wrapped in Supabase Realtime envelope
+    Map<String, dynamic> actualPayload = payload;
+    if (payload.containsKey('payload') && payload['payload'] is Map) {
+      actualPayload = Map<String, dynamic>.from(payload['payload'] as Map);
+    }
+    debugPrint("[SafeSeat debug] actualPayload extracted: $actualPayload");
+
+    _fetchJobOfferDetails(actualPayload);
   }
 
   void _closeJobOfferDialog() {
@@ -366,7 +575,33 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  void _updateJobMarkers() {
+  Future<List<LatLng>> _getOSRMRoute(LatLng start, LatLng end) async {
+    try {
+      final url = "https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson";
+      final dio = Dio();
+      final response = await dio.get(url);
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data['routes'] != null && data['routes'].isNotEmpty) {
+          final geometry = data['routes'][0]['geometry'];
+          if (geometry != null && geometry['coordinates'] != null) {
+            final coords = geometry['coordinates'] as List;
+            return coords.map((c) {
+              final lng = (c[0] as num).toDouble();
+              final lat = (c[1] as num).toDouble();
+              return LatLng(lat, lng);
+            }).toList();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("[SafeSeat OSRM] Error fetching route: $e");
+    }
+    // Fallback to straight line if OSRM fails
+    return [start, end];
+  }
+
+  Future<void> _updateJobMarkers() async {
     List<Marker> jobMarkers = [];
     List<Polyline> jobPolylines = [];
     
@@ -409,47 +644,61 @@ class _MapPageState extends State<MapPage> {
       );
     }
     
-    // Generate route line (polylines)
+    setState(() {
+      _markers = jobMarkers;
+    });
+
+    // Move map camera to show pickup point
+    if (_pickupLat != null && _pickupLng != null) {
+      _moveToCoordinates(_pickupLat!, _pickupLng!, zoom: 14);
+    }
+
+    // Generate route line (polylines) using OSRM
+    List<LatLng> driverToPickup = [];
     if (_currentPosition != null && _pickupLat != null && _pickupLng != null) {
-      // Line from driver's location to pickup point (Blue line)
+      driverToPickup = await _getOSRMRoute(
+        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        LatLng(_pickupLat!, _pickupLng!),
+      );
+    }
+    
+    List<LatLng> pickupToDropoff = [];
+    if (_pickupLat != null && _pickupLng != null && _dropoffLat != null && _dropoffLng != null) {
+      pickupToDropoff = await _getOSRMRoute(
+        LatLng(_pickupLat!, _pickupLng!),
+        LatLng(_dropoffLat!, _dropoffLng!),
+      );
+    }
+
+    if (driverToPickup.isNotEmpty) {
       jobPolylines.add(
         Polyline(
-          points: [
-            LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-            LatLng(_pickupLat!, _pickupLng!),
-          ],
+          points: driverToPickup,
           color: const Color(0xFF3B82F6), // Material Blue
           strokeWidth: 4.5,
         ),
       );
     }
     
-    if (_pickupLat != null && _pickupLng != null && _dropoffLat != null && _dropoffLng != null) {
-      // Line from pickup point to destination (Green/Emerald line)
+    if (pickupToDropoff.isNotEmpty) {
       jobPolylines.add(
         Polyline(
-          points: [
-            LatLng(_pickupLat!, _pickupLng!),
-            LatLng(_dropoffLat!, _dropoffLng!),
-          ],
+          points: pickupToDropoff,
           color: const Color(0xFF10B981), // Emerald Green
           strokeWidth: 4.5,
         ),
       );
     }
     
-    setState(() {
-      _markers = jobMarkers;
-      _polylines = jobPolylines;
-    });
-    
-    // Move map camera to show pickup point
-    if (_pickupLat != null && _pickupLng != null) {
-      _moveToCoordinates(_pickupLat!, _pickupLng!, zoom: 14);
+    if (mounted) {
+      setState(() {
+        _polylines = jobPolylines;
+      });
     }
   }
 
   Future<void> _acceptTeamJob(dynamic requestId) async {
+    debugPrint("[SafeSeat debug] _acceptTeamJob called with requestId: $requestId, _buddyTeamId: $_buddyTeamId");
     // หากเป็นงานจำลอง (999) ให้เปิดหน้างานจำลองทันทีโดยไม่ต้องส่งไปหลังบ้าน
     if (requestId == 999) {
       if (mounted) {
@@ -473,7 +722,15 @@ class _MapPageState extends State<MapPage> {
     }
 
     try {
-      if (_buddyTeamId == null) return;
+      if (_buddyTeamId == null) {
+        debugPrint("[SafeSeat debug] _buddyTeamId is null! Cannot accept job.");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('รับงานล้มเหลว: ไม่พบข้อมูลทีมคนขับในเครื่อง (buddyTeamId is null)')),
+          );
+        }
+        return;
+      }
       
       final response = await ApiService.post('/buddy-team/accept-job', data: {
         'request_id': requestId,
@@ -486,6 +743,8 @@ class _MapPageState extends State<MapPage> {
             SnackBar(content: Text(response.data['message'] ?? 'รับงานสำเร็จ')),
           );
           
+          final jobData = response.data['job'];
+          
           setState(() {
             _hasActiveJob = true;
             _activeRequestId = requestId;
@@ -493,13 +752,32 @@ class _MapPageState extends State<MapPage> {
             
             _pickupName = "จุดนัดหมายลูกค้า";
             _dropoffName = "จุดหมายปลายทาง";
-            _pickupLat = _currentPosition?.latitude ?? 13.7563;
-            _pickupLng = _currentPosition?.longitude ?? 100.5018;
-            _dropoffLat = (_currentPosition?.latitude ?? 13.7563) - 0.02;
-            _dropoffLng = (_currentPosition?.longitude ?? 100.5018) + 0.02;
             
+            if (jobData != null) {
+              _pickupLat = double.tryParse(jobData['pickuplatitude']?.toString() ?? '') ?? _currentPosition?.latitude ?? 13.7563;
+              _pickupLng = double.tryParse(jobData['pickuplongitude']?.toString() ?? '') ?? _currentPosition?.longitude ?? 100.5018;
+              _dropoffLat = double.tryParse(jobData['dropofflatitude']?.toString() ?? '') ?? (_pickupLat! - 0.02);
+              _dropoffLng = double.tryParse(jobData['dropofflongitude']?.toString() ?? '') ?? (_pickupLng! + 0.02);
+            } else {
+              _pickupLat = _currentPosition?.latitude ?? 13.7563;
+              _pickupLng = _currentPosition?.longitude ?? 100.5018;
+              _dropoffLat = (_currentPosition?.latitude ?? 13.7563) - 0.02;
+              _dropoffLng = (_currentPosition?.longitude ?? 100.5018) + 0.02;
+            }
+            
+            _setupActiveJobListener(requestId);
             _updateJobMarkers();
           });
+          
+          // Broadcast to buddy that job has been accepted
+          _teamChannel?.send(
+            type: RealtimeListenTypes.broadcast,
+            event: 'job_accepted',
+            payload: {
+              'requestid': requestId,
+              'job': jobData,
+            },
+          );
         }
       } else {
         if (mounted) {
@@ -1174,6 +1452,12 @@ class _MapPageState extends State<MapPage> {
                                 .from('requestbyuser')
                                 .update({'requeststatus': 'ถึงจุดนัดหมาย'})
                                 .eq('requestid', _activeRequestId);
+                            
+                            _teamChannel?.send(
+                              type: RealtimeListenTypes.broadcast,
+                              event: 'job_status_updated',
+                              payload: {'status': 'ถึงจุดนัดหมาย'},
+                            );
                           } catch (e) {
                             debugPrint("Error updating request status: $e");
                           }
@@ -1186,6 +1470,12 @@ class _MapPageState extends State<MapPage> {
                                 .from('requestbyuser')
                                 .update({'requeststatus': 'กำลังเดินทาง'})
                                 .eq('requestid', _activeRequestId);
+                            
+                            _teamChannel?.send(
+                              type: RealtimeListenTypes.broadcast,
+                              event: 'job_status_updated',
+                              payload: {'status': 'กำลังเดินทาง'},
+                            );
                           } catch (e) {
                             debugPrint("Error updating request status: $e");
                           }
@@ -1205,6 +1495,12 @@ class _MapPageState extends State<MapPage> {
                                   .update({'teamstatus': 'Ready'})
                                   .eq('buddyteamid', _buddyTeamId!);
                             }
+
+                            _teamChannel?.send(
+                              type: RealtimeListenTypes.broadcast,
+                              event: 'job_status_updated',
+                              payload: {'status': 'completed'},
+                            );
                           } catch (e) {
                             debugPrint("Error completing request: $e");
                           }
