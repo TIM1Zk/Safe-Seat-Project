@@ -12,6 +12,8 @@ import 'package:mobile_project/features/profile_page/profile_page.dart';
 import 'package:mobile_project/features/view_wallet_balance/view_wallet_balance.dart';
 import 'package:mobile_project/features/Listdriverreport_page/Listdriverreport_page.dart';
 import 'package:mobile_project/features/searchbuddy_page/searchbuddy_page.dart';
+import 'package:mobile_project/features/map_page/finish_job_page.dart';
+import 'package:mobile_project/features/service_summary/service_summary_page.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -129,12 +131,14 @@ class _MapPageState extends State<MapPage> {
 
   void _setupRealtimeListeners(int teamId) {
     final supabase = Supabase.instance.client;
+    debugPrint("[SafeSeat debug] Setting up Realtime listeners for teamId: $teamId");
     
     // 1. Listen for Broadcast (New Job Offers, Accepts, and Status Updates)
     _teamChannel = supabase.channel('team_room_$teamId');
     _teamChannel!.onBroadcast(
       event: 'new_job_dispatched',
       callback: (payload) {
+        debugPrint("[SafeSeat debug] Received broadcast new_job_dispatched with payload: $payload");
         if (payload != null) {
           _showNewJobOfferDialog(payload);
         }
@@ -142,6 +146,7 @@ class _MapPageState extends State<MapPage> {
     ).onBroadcast(
       event: 'job_accepted',
       callback: (payload) {
+        debugPrint("[SafeSeat debug] Received broadcast job_accepted with payload: $payload");
         if (payload != null && mounted) {
           _closeJobOfferDialog();
           
@@ -181,6 +186,7 @@ class _MapPageState extends State<MapPage> {
     ).onBroadcast(
       event: 'job_status_updated',
       callback: (payload) {
+        debugPrint("[SafeSeat debug] Received broadcast job_status_updated with payload: $payload");
         if (payload != null && mounted) {
           final innerPayload = (payload.containsKey('payload') && payload['payload'] is Map)
               ? Map<String, dynamic>.from(payload['payload'] as Map)
@@ -193,7 +199,7 @@ class _MapPageState extends State<MapPage> {
               _currentJobStatus = 'arrived';
             } else if (newStatus == 'in progress' || newStatus == 'กำลังเดินทาง') {
               _currentJobStatus = 'in progress';
-            } else if (newStatus == 'completed') {
+            } else if (newStatus == 'completed' || newStatus == 'เสร็จสิ้น') {
               _hasActiveJob = false;
               _activeRequestId = null;
               _polylines = [];
@@ -205,7 +211,9 @@ class _MapPageState extends State<MapPage> {
           });
         }
       },
-    ).subscribe();
+    ).subscribe((status, [error]) {
+      debugPrint("[SafeSeat debug] Channel team_room_$teamId status: $status, error: $error");
+    });
 
     // On initialization, fetch the current active job if the team is already busy
     _fetchActiveJobForTeam(teamId);
@@ -278,7 +286,7 @@ class _MapPageState extends State<MapPage> {
               _currentJobStatus = 'arrived';
             } else if (dbStatus == 'in progress' || dbStatus == 'กำลังเดินทาง') {
               _currentJobStatus = 'in progress';
-            } else if (dbStatus == 'completed') {
+            } else if (dbStatus == 'completed' || dbStatus == 'เสร็จสิ้น') {
               _hasActiveJob = false;
               _activeRequestId = null;
               _polylines = [];
@@ -302,7 +310,7 @@ class _MapPageState extends State<MapPage> {
           .from('requestbyuser')
           .select('*')
           .eq('buddy_team_id', teamId)
-          .neq('requeststatus', 'completed')
+          .not('requeststatus', 'in', '("completed","เสร็จสิ้น")')
           .maybeSingle();
 
       bool isPub = false;
@@ -311,7 +319,7 @@ class _MapPageState extends State<MapPage> {
             .from('requestbypub')
             .select('*')
             .eq('buddy_team_id', teamId)
-            .neq('requeststatus', 'completed')
+            .not('requeststatus', 'in', '("completed","เสร็จสิ้น")')
             .maybeSingle();
         if (activeJobs != null) {
           isPub = true;
@@ -774,7 +782,7 @@ class _MapPageState extends State<MapPage> {
         setState(() {
           _hasActiveJob = true;
           _activeRequestId = requestId;
-          _currentJobStatus = 'กำลังไปรับ';
+          _currentJobStatus = 'going to pickup';
           _pickupName = "ผับคุณหนูนิ่มประจำเชียงใหม่";
           _dropoffName = "บ้านพักคุณหนูนิ่ม";
           _pickupLat = 18.8972;
@@ -951,22 +959,6 @@ class _MapPageState extends State<MapPage> {
     });
 
     _moveToCoordinates(lat, lon, zoom: 15);
-
-    if (showSnackBar && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("ระบุพิกัดตำแหน่งของคุณสำเร็จที่ (${lat.toStringAsFixed(4)}, ${lon.toStringAsFixed(4)})"),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF1E1E1E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          action: SnackBarAction(
-            label: "ตกลง",
-            textColor: const Color(0xFF7CE5FF),
-            onPressed: () {},
-          ),
-        ),
-      );
-    }
   }
 
   void _showMarkerDetails(String name, String address) {
@@ -1365,11 +1357,10 @@ class _MapPageState extends State<MapPage> {
                     ),
                     const SizedBox(height: 15),
 
-                    // หัวข้อ
                     Text(
                       _currentJobStatus == 'going to pickup'
-                          ? "Going to Pickup Point"
-                          : (_currentJobStatus == 'arrived' ? "Waiting for Customer" : "On the way to Dropoff"),
+                          ? "กำลังไปรับลูกค้า"
+                          : (_currentJobStatus == 'arrived' ? "ถึงจุดนัดหมายแล้ว (รอลูกค้า)" : "กำลังเดินทางไปส่งลูกค้า"),
                       style: const TextStyle(
                         color: Color(0xDD000000),
                         fontSize: 22,
@@ -1480,20 +1471,20 @@ class _MapPageState extends State<MapPage> {
                     // ปุ่มกดแสดงสถานะ (สไลด์เพื่อยืนยัน)
                     SlideActionBtn(
                       text: _currentJobStatus == 'going to pickup'
-                          ? "Arrived at pick up point"
-                          : (_currentJobStatus == 'arrived' ? "Start Trip" : "Complete Trip"),
+                          ? "ถึงจุดนัดหมาย"
+                          : (_currentJobStatus == 'arrived' ? "เริ่มเดินทาง" : "สิ้นสุดการเดินทาง"),
                       onConfirmed: () async {
                         if (_currentJobStatus == 'going to pickup') {
                           try {
                             await Supabase.instance.client
                                 .from(_isPubJob ? 'requestbypub' : 'requestbyuser')
-                                .update({'requeststatus': 'arrived'})
+                                .update({'requeststatus': 'ถึงจุดนัดหมาย'})
                                 .eq('requestid', _activeRequestId);
                             
                             _teamChannel?.send(
                               type: RealtimeListenTypes.broadcast,
                               event: 'job_status_updated',
-                              payload: {'status': 'arrived'},
+                              payload: {'status': 'ถึงจุดนัดหมาย'},
                             );
                           } catch (e) {
                             debugPrint("Error updating request status: $e");
@@ -1505,13 +1496,13 @@ class _MapPageState extends State<MapPage> {
                           try {
                             await Supabase.instance.client
                                 .from(_isPubJob ? 'requestbypub' : 'requestbyuser')
-                                .update({'requeststatus': 'in progress'})
+                                .update({'requeststatus': 'กำลังเดินทาง'})
                                 .eq('requestid', _activeRequestId);
                             
                             _teamChannel?.send(
                               type: RealtimeListenTypes.broadcast,
                               event: 'job_status_updated',
-                              payload: {'status': 'in progress'},
+                              payload: {'status': 'กำลังเดินทาง'},
                             );
                           } catch (e) {
                             debugPrint("Error updating request status: $e");
@@ -1520,39 +1511,38 @@ class _MapPageState extends State<MapPage> {
                             _currentJobStatus = 'in progress';
                           });
                         } else if (_currentJobStatus == 'in progress') {
-                          try {
-                            await Supabase.instance.client
-                                .from(_isPubJob ? 'requestbypub' : 'requestbyuser')
-                                .update({'requeststatus': 'completed'})
-                                .eq('requestid', _activeRequestId);
-                            
-                            if (_buddyTeamId != null) {
-                              await Supabase.instance.client
-                                  .from('buddyteam')
-                                  .update({'teamstatus': 'Ready'})
-                                  .eq('buddyteamid', _buddyTeamId!);
+                          final result = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FinishJobPage(
+                                requestId: _activeRequestId,
+                                buddyTeamId: _buddyTeamId,
+                                isPubJob: _isPubJob,
+                                distance: _jobDistance,
+                                fare: _jobFee,
+                              ),
+                            ),
+                          );
+
+                          if (result == true) {
+                            try {
+                              _teamChannel?.send(
+                                type: RealtimeListenTypes.broadcast,
+                                event: 'job_status_updated',
+                                payload: {'status': 'เสร็จสิ้น'},
+                              );
+                            } catch (e) {
+                              debugPrint("Error broadcasting job completion: $e");
                             }
 
-                            _teamChannel?.send(
-                              type: RealtimeListenTypes.broadcast,
-                              event: 'job_status_updated',
-                              payload: {'status': 'completed'},
-                            );
-                          } catch (e) {
-                            debugPrint("Error completing request: $e");
+                            setState(() {
+                              _hasActiveJob = false;
+                              _activeRequestId = null;
+                              _currentPosition = null;
+                              _polylines = [];
+                              _initLocation();
+                            });
                           }
-                          
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("ส่งผู้โดยสารเรียบร้อยแล้ว!")),
-                          );
-                          
-                          setState(() {
-                            _hasActiveJob = false;
-                            _activeRequestId = null;
-                            _currentPosition = null;
-                            _polylines = [];
-                            _initLocation();
-                          });
                         }
                       },
                     ),
@@ -1866,7 +1856,7 @@ class _MapPageState extends State<MapPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ListDriverReportPage(username: username),
+                  builder: (context) => ServiceSummaryPage(username: username),
                 ),
               );
             }

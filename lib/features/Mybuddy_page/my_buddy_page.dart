@@ -206,6 +206,23 @@ class _MyBuddyPageState extends State<MyBuddyPage> {
                   "${profile['firstname']} ${profile['lastname']}",
                   style: const TextStyle(color: Color(0xFF1E1E1E), fontSize: 24, fontWeight: FontWeight.bold),
                 ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: (_buddyTeam?['leaderid']?.toString().toLowerCase() == profile['username']?.toString().toLowerCase())
+                        ? const Color(0xFFF59E0B) // Amber for Leader
+                        : const Color(0xFF3B82F6), // Blue for Follower
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    (_buddyTeam?['leaderid']?.toString().toLowerCase() == profile['username']?.toString().toLowerCase())
+                        ? "Leader (หัวหน้าทีม)"
+                        : "Follower (ผู้ช่วย/ผู้ตาม)",
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 6),
                 Text(
                   "@${profile['username']}",
                   style: TextStyle(color: colorScheme.primary, fontSize: 16, fontWeight: FontWeight.w600),

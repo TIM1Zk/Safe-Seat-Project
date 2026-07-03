@@ -65,7 +65,6 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. Top Bar (Back Button and Title)
                       Row(
                         children: [
                           IconButton(
@@ -79,9 +78,9 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
                             onPressed: () => Navigator.pop(context),
                           ),
                           const Text(
-                            "WithDraw History",
+                            "ประวัติการทำธุรกรรม",
                             style: TextStyle(
-                              fontSize: 28,
+                              fontSize: 24,
                               fontWeight: FontWeight.bold,
                               color: Colors.black,
                             ),
@@ -107,7 +106,7 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
                         child: Column(
                           children: [
                             const Text(
-                              "TOTAL Withdraw",
+                              "ยอดการถอนเงินทั้งหมด",
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -117,9 +116,9 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              "\$${totalWithdraw.toStringAsFixed(2)}",
+                              "฿${totalWithdraw.toStringAsFixed(2)}",
                               style: const TextStyle(
-                                fontSize: 48,
+                                fontSize: 40,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black,
                               ),
@@ -134,11 +133,11 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            _buildFilterPill("Last 7 Days"),
+                            _buildFilterPill("7 วันล่าสุด"),
                             const SizedBox(width: 10),
-                            _buildFilterPill("Status"),
+                            _buildFilterPill("สถานะ"),
                             const SizedBox(width: 10),
-                            _buildFilterPill("Custom", icon: Icons.calendar_today),
+                            _buildFilterPill("ปฏิทิน", icon: Icons.calendar_today),
                           ],
                         ),
                       ),
@@ -149,7 +148,7 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: const [
                           Text(
-                            "Recent Transections",
+                            "รายการล่าสุด",
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -157,7 +156,7 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
                             ),
                           ),
                           Text(
-                            "January 2026",
+                            "ประวัติทั้งหมด",
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.black38,
@@ -237,20 +236,16 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
     final DateTime createdAt = DateTime.parse(tx['created_at']).toLocal();
     final String formattedDate = DateFormat('dd MMM yyyy, HH:mm').format(createdAt);
     final double amount = (tx['amount'] ?? 0).toDouble();
-    final String status = tx['status'] == 'success' ? 'Completed' : 'Pending';
+    final String status = tx['status'] == 'success' ? 'สำเร็จ' : 'รอดำเนินการ';
     final Color statusColor = tx['status'] == 'success' ? const Color(0xFF22C55E) : Colors.orange;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E5E7),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          // SCB Bank Icon
-          Container(
+    final bool isWithdraw = tx['type'] == 'withdraw';
+    final String txTitle = isWithdraw ? "ถอนเงิน (Withdrawal)" : "รายได้จากการให้บริการ (Income)";
+    final String amountText = "${isWithdraw ? '-' : '+'} ฿${amount.toStringAsFixed(2)}";
+    final Color amountColor = isWithdraw ? Colors.redAccent : const Color(0xFF22C55E);
+
+    final Widget iconWidget = isWithdraw
+        ? Container(
             width: 56,
             height: 56,
             decoration: BoxDecoration(
@@ -260,7 +255,7 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
-                Icon(Icons.shield_outlined, color: Colors.amber, size: 24),
+                Icon(Icons.account_balance_outlined, color: Colors.amber, size: 24),
                 Text(
                   "SCB",
                   style: TextStyle(
@@ -271,7 +266,31 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
                 ),
               ],
             ),
-          ),
+          )
+        : Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFF22C55E).withOpacity(0.15), // Light green background
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_rounded,
+              color: Color(0xFF22C55E),
+              size: 28,
+            ),
+          );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE5E5E7),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          iconWidget,
           const SizedBox(width: 16),
           // Transaction Details
           Expanded(
@@ -279,24 +298,37 @@ class _WalletHistoryPageState extends State<WalletHistoryPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "\$${amount.toStringAsFixed(2)}",
-                  style: const TextStyle(
+                  amountText,
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: amountColor,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  "Siam Commercial Bank **** 1234",
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.black54,
+                Text(
+                  txTitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                if (isWithdraw) ...[
+                  const SizedBox(height: 2),
+                  const Text(
+                    "ธนาคารไทยพาณิชย์ **** 1234",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.black54,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 4),
                 Text(
                   formattedDate,
                   style: const TextStyle(
