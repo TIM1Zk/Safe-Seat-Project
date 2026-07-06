@@ -13,6 +13,7 @@ import 'package:mobile_project/features/view_wallet_balance/view_wallet_balance.
 import 'package:mobile_project/features/Listdriverreport_page/Listdriverreport_page.dart';
 import 'package:mobile_project/features/searchbuddy_page/searchbuddy_page.dart';
 import 'package:mobile_project/features/map_page/finish_job_page.dart';
+import 'package:mobile_project/features/map_page/report_user_page.dart';
 import 'package:mobile_project/features/service_summary/service_summary_page.dart';
 
 class MapPage extends StatefulWidget {
@@ -1168,7 +1169,29 @@ class _MapPageState extends State<MapPage> {
             ],
           ),
 
-
+          // Debug Button to simulate active job
+          Positioned(
+            top: 50,
+            right: 20,
+            child: FloatingActionButton.small(
+              backgroundColor: Colors.redAccent,
+              tooltip: "Simulate Active Job",
+              child: const Icon(Icons.bug_report, color: Colors.white),
+              onPressed: () {
+                setState(() {
+                  _hasActiveJob = !_hasActiveJob;
+                  if (_hasActiveJob) {
+                    _activeRequestId = 54; // Valid test request ID
+                    _currentJobStatus = 'going to pickup';
+                    _clientName = "คุณหญิงนุ้งนิ้ม สายบันเทิง";
+                    _clientPhone = "081-234-5678";
+                  } else {
+                    _activeRequestId = null;
+                  }
+                });
+              },
+            ),
+          ),
 
           // 2. ป้ายแสดงรายละเอียด Marker เมื่อถูกสัมผัสแตะ
           if (_selectedPlaceName != null)
@@ -1407,6 +1430,36 @@ class _MapPageState extends State<MapPage> {
                             child: const Icon(
                               Icons.phone,
                               color: Colors.black,
+                              size: 26,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: () {
+                            if (_activeRequestId != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ReportUserPage(requestId: _activeRequestId),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("ไม่พบข้อมูลคำขอที่จะรายงาน")),
+                              );
+                            }
+                          },
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.report_problem,
+                              color: Colors.redAccent,
                               size: 26,
                             ),
                           ),
