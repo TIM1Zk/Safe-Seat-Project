@@ -105,10 +105,10 @@ class _LoginPageState extends State<LoginPage> {
     const accentColor = Color(0xFF7CE5FF); // Frosted Blue
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D), // Ultra Dark
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 1. Background Gradient & Decorative Orbs
+          // 1. Background Gradient & Decorative Orbs (Light Theme matching other pages)
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -117,9 +117,9 @@ class _LoginPageState extends State<LoginPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF0D0D0D),
-                  Color(0xFF1A1A1A),
-                  Color(0xFF0D0D0D),
+                  Color(0xFFF8F9FA),
+                  Colors.white,
+                  Color(0xFFF1F3F5),
                 ],
               ),
             ),
@@ -132,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: accentColor.withOpacity(0.05),
+                color: accentColor.withOpacity(0.15),
               ),
             ),
           ),
@@ -144,7 +144,7 @@ class _LoginPageState extends State<LoginPage> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: accentColor.withOpacity(0.03),
+                color: accentColor.withOpacity(0.08),
               ),
             ),
           ),
@@ -175,31 +175,31 @@ class _LoginPageState extends State<LoginPage> {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.1),
+                              color: Colors.white,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: accentColor.withOpacity(0.2),
+                                color: const Color(0xFFE2E8F0),
                                 width: 2,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: accentColor.withOpacity(0.1),
-                                  blurRadius: 40,
-                                  spreadRadius: 5,
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 20,
+                                  spreadRadius: 2,
                                 ),
                               ],
                             ),
                             child: const Icon(
                               Icons.drive_eta_rounded,
                               size: 70,
-                              color: accentColor,
+                              color: Colors.black87,
                             ),
                           ),
                           const SizedBox(height: 30),
                           const Text(
                             "Safe Seat Driver",
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Colors.black87,
                               fontSize: 36,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.5,
@@ -209,7 +209,7 @@ class _LoginPageState extends State<LoginPage> {
                           Text(
                             "พรีเมียมแพลตฟอร์มสำหรับคนขับมืออาชีพ",
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
+                              color: Colors.black54,
                               fontSize: 15,
                               letterSpacing: 0.5,
                             ),
@@ -227,12 +227,18 @@ class _LoginPageState extends State<LoginPage> {
                         child: Container(
                           padding: const EdgeInsets.all(25),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.04),
+                            color: Colors.white.withOpacity(0.4),
                             borderRadius: BorderRadius.circular(30),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.black.withOpacity(0.08),
                               width: 1.5,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.03),
+                                blurRadius: 30,
+                              ),
+                            ],
                           ),
                           child: Form(
                             key: formKey,
@@ -263,7 +269,7 @@ class _LoginPageState extends State<LoginPage> {
                                     borderRadius: BorderRadius.circular(18),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: accentColor.withOpacity(0.3),
+                                        color: Colors.black.withOpacity(0.15),
                                         blurRadius: 20,
                                         offset: const Offset(0, 10),
                                       ),
@@ -272,8 +278,8 @@ class _LoginPageState extends State<LoginPage> {
                                   child: ElevatedButton(
                                     onPressed: isloading ? null : _handleLogin,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: accentColor,
-                                      foregroundColor: const Color(0xFF0D0D0D),
+                                      backgroundColor: Colors.black,
+                                      foregroundColor: Colors.white,
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(18),
@@ -284,7 +290,7 @@ class _LoginPageState extends State<LoginPage> {
                                             width: 24,
                                             height: 24,
                                             child: CircularProgressIndicator(
-                                              color: Color(0xFF0D0D0D),
+                                              color: Colors.white,
                                               strokeWidth: 3,
                                             ),
                                           )
@@ -308,10 +314,10 @@ class _LoginPageState extends State<LoginPage> {
                     // --- Footer ---
                     TextButton(
                       onPressed: () {},
-                      child: Text(
+                      child: const Text(
                         "ยังไม่เป็นสมาชิก? สมัครขับตอนนี้",
                         style: TextStyle(
-                          color: accentColor.withOpacity(0.8),
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -343,7 +349,7 @@ class _LoginPageState extends State<LoginPage> {
           child: Text(
             label,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.black54,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -353,11 +359,11 @@ class _LoginPageState extends State<LoginPage> {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
-          style: const TextStyle(color: Colors.white, fontSize: 16),
+          style: const TextStyle(color: Colors.black87, fontSize: 16),
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: accentColor, size: 22),
+            prefixIcon: Icon(icon, color: Colors.black54, size: 22),
             filled: true,
-            fillColor: Colors.black.withOpacity(0.3),
+            fillColor: Colors.black.withOpacity(0.03),
             contentPadding: const EdgeInsets.all(18),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(15),
@@ -365,12 +371,12 @@ class _LoginPageState extends State<LoginPage> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(15),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+              borderSide: BorderSide(color: Colors.black.withOpacity(0.06)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(15),
-              borderSide: BorderSide(
-                color: accentColor.withOpacity(0.5),
+              borderSide: const BorderSide(
+                color: Colors.black,
                 width: 1.5,
               ),
             ),

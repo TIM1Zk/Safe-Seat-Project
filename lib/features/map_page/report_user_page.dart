@@ -119,7 +119,7 @@ class _ReportUserPageState extends State<ReportUserPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 24),
           onPressed: () => Navigator.pop(context, false),
         ),
       ),
@@ -134,12 +134,11 @@ class _ReportUserPageState extends State<ReportUserPage> {
                 child: Column(
                   children: [
                     const Text(
-                      "Report Incident",
+                      "รายงานปัญหาเกี่ยวกับผู้ใช้",
                       style: TextStyle(
-                        fontSize: 32,
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
-                        fontFamily: 'Outfit',
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -155,47 +154,46 @@ class _ReportUserPageState extends State<ReportUserPage> {
 
               // 2. What happened? Section
               const Text(
-                "What happened?",
+                "เกิดอะไรขึ้น?",
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
-                  fontFamily: 'Outfit',
                 ),
               ),
               const SizedBox(height: 16),
 
               // Options
-              _buildReasonOption("Behavior", Icons.report_problem_outlined),
+              _buildReasonOption("Behavior", "พฤติกรรมไม่เหมาะสม", Icons.report_problem_outlined),
               const SizedBox(height: 12),
-              _buildReasonOption("Wrong Location", Icons.cancel_outlined),
+              _buildReasonOption("Wrong Location", "หมุดสถานที่ผิดพลาด", Icons.cancel_outlined),
               const SizedBox(height: 12),
-              _buildReasonOption("Safety issue", Icons.shield_outlined),
+              _buildReasonOption("Safety issue", "ความปลอดภัยขณะปฏิบัติงาน", Icons.shield_outlined),
               const SizedBox(height: 28),
 
               // 3. Tell us more Section
               const Text(
-                "Tell us more",
+                "ระบุรายละเอียดเพิ่มเติม",
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
-                  fontFamily: 'Outfit',
                 ),
               ),
               const SizedBox(height: 4),
               const Text(
-                "detail help our safety team investigate faster.",
+                "การระบุข้อมูลโดยละเอียดจะช่วยให้ทีมงานตรวจสอบได้รวดเร็วยิ่งขึ้น",
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: Colors.black45,
                 ),
               ),
               const SizedBox(height: 12),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE5E5E7),
+                  color: const Color(0xFFF1F3F5),
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.black.withOpacity(0.06)),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: TextField(
@@ -203,7 +201,7 @@ class _ReportUserPageState extends State<ReportUserPage> {
                   maxLines: 5,
                   style: const TextStyle(fontSize: 16, color: Colors.black),
                   decoration: const InputDecoration(
-                    hintText: "detail ...",
+                    hintText: "อธิบายรายละเอียดของเหตุการณ์...",
                     hintStyle: TextStyle(color: Colors.black38),
                     border: InputBorder.none,
                   ),
@@ -213,24 +211,23 @@ class _ReportUserPageState extends State<ReportUserPage> {
 
               // 4. Add evidence Section
               const Text(
-                "Add evidence",
+                "แนบหลักฐานการแจ้งเรื่อง",
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
-                  fontFamily: 'Outfit',
                 ),
               ),
               const SizedBox(height: 12),
               GestureDetector(
                 onTap: _pickImage,
                 child: CustomPaint(
-                  painter: DashedBorderPainter(color: Colors.black45),
+                  painter: DashedBorderPainter(color: Colors.black26),
                   child: Container(
                     width: 100,
                     height: 100,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE5E5E7),
+                      color: const Color(0xFFF8F9FA),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: _evidenceImage != null
@@ -273,17 +270,17 @@ class _ReportUserPageState extends State<ReportUserPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: const [
                               Icon(
-                                Icons.cloud_upload_outlined,
+                                Icons.camera_alt_outlined,
                                 size: 36,
-                                color: Colors.black87,
+                                color: Colors.black54,
                               ),
                               SizedBox(height: 4),
                               Text(
-                                "Upload",
+                                "ถ่ายภาพ",
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  color: Colors.black54,
                                 ),
                               ),
                             ],
@@ -296,13 +293,14 @@ class _ReportUserPageState extends State<ReportUserPage> {
               // 5. Submit Button
               SizedBox(
                 width: double.infinity,
-                height: 54,
+                height: 58,
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitReport,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF3B30), // Red color matching mockup
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(18),
                     ),
                     elevation: 0,
                   ),
@@ -311,10 +309,10 @@ class _ReportUserPageState extends State<ReportUserPage> {
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
-                            Icon(Icons.send, color: Colors.white, size: 20),
+                            Icon(Icons.send_rounded, color: Colors.white, size: 20),
                             SizedBox(width: 8),
                             Text(
-                              "Submit Report",
+                              "ส่งรายงาน",
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -333,23 +331,23 @@ class _ReportUserPageState extends State<ReportUserPage> {
     );
   }
 
-  Widget _buildReasonOption(String reason, IconData icon) {
-    final bool isSelected = _selectedReason == reason;
+  Widget _buildReasonOption(String key, String displayText, IconData icon) {
+    final bool isSelected = _selectedReason == key;
 
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedReason = reason;
+          _selectedReason = key;
         });
       },
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFDF2F8) : const Color(0xFFFAFAFA),
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? const Color(0xFF7CE5FF).withOpacity(0.08) : const Color(0xFFFAFAFA),
+          borderRadius: BorderRadius.circular(15),
           border: Border.all(
-            color: isSelected ? const Color(0xFFF472B6) : Colors.black12,
+            color: isSelected ? const Color(0xFF007AFF) : Colors.black12,
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
@@ -357,23 +355,23 @@ class _ReportUserPageState extends State<ReportUserPage> {
           children: [
             Icon(
               icon,
-              color: isSelected ? const Color(0xFFDB2777) : Colors.black87,
+              color: isSelected ? const Color(0xFF007AFF) : Colors.black87,
               size: 24,
             ),
             const SizedBox(width: 16),
             Text(
-              reason,
+              displayText,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? const Color(0xFFDB2777) : Colors.black87,
+                color: isSelected ? const Color(0xFF007AFF) : Colors.black87,
               ),
             ),
             const Spacer(),
             if (isSelected)
               const Icon(
                 Icons.check_circle,
-                color: Color(0xFFDB2777),
+                color: Color(0xFF007AFF),
                 size: 22,
               ),
           ],

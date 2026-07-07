@@ -6,6 +6,7 @@ import 'package:mobile_project/core/network/api_service.dart';
 import 'package:mobile_project/core/utils/session_manager.dart';
 import 'package:mobile_project/features/profile_page/driver_profile_detail_page.dart';
 import 'package:mobile_project/features/service_summary/service_summary_page.dart';
+import 'package:mobile_project/features/profile_page/user_reported_history_page.dart';
 
 class ProfilePage extends StatelessWidget {
   final String username;
@@ -34,7 +35,9 @@ class ProfilePage extends StatelessWidget {
           future: getProfileData(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Colors.black));
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.black),
+              );
             }
 
             if (snapshot.hasError || snapshot.data == null) {
@@ -49,13 +52,16 @@ class ProfilePage extends StatelessWidget {
             final data = snapshot.data!;
             final firstName = data['firstname'] ?? data['first_name'];
             final lastName = data['lastname'] ?? data['last_name'];
-            final name = firstName != null 
+            final name = firstName != null
                 ? "$firstName ${lastName ?? ''}"
                 : data['username'] ?? username;
 
             return SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -83,10 +89,7 @@ class ProfilePage extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Container(
-                      height: 2,
-                      color: Colors.grey.withOpacity(0.2),
-                    ),
+                    Container(height: 2, color: Colors.grey.withOpacity(0.2)),
                     const SizedBox(height: 24),
 
                     // 2. Profile Card
@@ -95,7 +98,8 @@ class ProfilePage extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => DriverProfileDetailPage(profileData: data),
+                            builder: (context) =>
+                                DriverProfileDetailPage(profileData: data),
                           ),
                         );
                       },
@@ -111,10 +115,18 @@ class ProfilePage extends StatelessWidget {
                               radius: 30,
                               backgroundColor: const Color(0xFFD1D1D6),
                               backgroundImage: data['regisimagepath'] != null
-                                  ? NetworkImage(ImageUtils.getProfileImageUrl(data['regisimagepath']))
+                                  ? NetworkImage(
+                                      ImageUtils.getProfileImageUrl(
+                                        data['regisimagepath'],
+                                      ),
+                                    )
                                   : null,
                               child: data['regisimagepath'] == null
-                                  ? const Icon(Icons.person, size: 36, color: Color(0xFF5856D6))
+                                  ? const Icon(
+                                      Icons.person,
+                                      size: 36,
+                                      color: Color(0xFF5856D6),
+                                    )
                                   : null,
                             ),
                             const SizedBox(width: 16),
@@ -133,7 +145,11 @@ class ProfilePage extends StatelessWidget {
                                   const SizedBox(height: 6),
                                   Row(
                                     children: const [
-                                      Icon(Icons.star, color: Colors.amber, size: 18),
+                                      Icon(
+                                        Icons.star,
+                                        color: Colors.amber,
+                                        size: 18,
+                                      ),
                                       SizedBox(width: 4),
                                       Text(
                                         "4.5",
@@ -164,13 +180,17 @@ class ProfilePage extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ServiceSummaryPage(username: username),
+                            builder: (context) =>
+                                ServiceSummaryPage(username: username),
                           ),
                         );
                       },
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 20,
+                          horizontal: 24,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE5E5E7),
                           borderRadius: BorderRadius.circular(20),
@@ -258,19 +278,52 @@ class ProfilePage extends StatelessWidget {
                       spacing: 20,
                       runSpacing: 20,
                       children: [
-                        _buildGridItem(Icons.chat_bubble_outline, "กล่องข้อความ", () {}),
-                        _buildGridItem(Icons.calendar_month_outlined, "ตารางรายการ", () {}),
-                        _buildGridItem(Icons.lightbulb_outline, "สิ่งที่น่าสนใจ", () {}),
-                        _buildGridItem(Icons.error_outline, "ศูนย์ความช่วยเหลือ", () {}),
-                        _buildGridItem(Icons.chat_bubble_outline, "ประวัติการรายงาน", () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ListDriverReportPage(username: username),
-                            ),
-                          );
-                        }),
-                        _buildGridItem(Icons.chat_bubble_outline, "อื่นๆ", () {}),
+                        _buildGridItem(
+                          Icons.chat_bubble_outline,
+                          "กล่องข้อความ",
+                          () {},
+                        ),
+                        _buildGridItem(
+                          Icons.calendar_month_outlined,
+                          "ตารางรายการ",
+                          () {},
+                        ),
+                        _buildGridItem(
+                          Icons.lightbulb_outline,
+                          "สิ่งที่น่าสนใจ",
+                          () {},
+                        ),
+                        _buildGridItem(
+                          Icons.error_outline,
+                          "ศูนย์ความช่วยเหลือ",
+                          () {},
+                        ),
+                        _buildGridItem(
+                          Icons.report_problem_outlined,
+                          "ประวัติโดนรายงาน",
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ListDriverReportPage(username: username),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildGridItem(
+                          Icons.assignment_late_outlined,
+                          "ประวัติส่งรายงาน",
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    UserReportedHistoryPage(username: username),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                     const SizedBox(height: 32),
@@ -302,7 +355,8 @@ class ProfilePage extends StatelessWidget {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Text(
                                         "เช็กข้อมูลเชิงลึกเกี่ยวกับรูปแบบการขับขี่ของคุณ",
@@ -318,13 +372,21 @@ class ProfilePage extends StatelessWidget {
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.black,
                                           foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 20,
+                                            vertical: 10,
+                                          ),
                                           minimumSize: Size.zero,
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(15),
+                                            borderRadius: BorderRadius.circular(
+                                              15,
+                                            ),
                                           ),
                                         ),
-                                        child: const Text("ดูรายงาน", style: TextStyle(fontSize: 13)),
+                                        child: const Text(
+                                          "ดูรายงาน",
+                                          style: TextStyle(fontSize: 13),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -350,30 +412,63 @@ class ProfilePage extends StatelessWidget {
                             child: Column(
                               children: [
                                 ListTile(
-                                  leading: const Icon(Icons.school, color: Colors.white, size: 28),
+                                  leading: const Icon(
+                                    Icons.school,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
                                   title: const Text(
                                     "Academy",
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                   subtitle: const Text(
                                     "แหล่งรวมบทเรียนต่างๆ",
-                                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                  trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                                  trailing: const Icon(
+                                    Icons.arrow_forward_ios,
+                                    color: Colors.white54,
+                                    size: 16,
+                                  ),
                                   onTap: () {},
                                 ),
-                                const Divider(color: Colors.white24, height: 1, indent: 16, endIndent: 16),
+                                const Divider(
+                                  color: Colors.white24,
+                                  height: 1,
+                                  indent: 16,
+                                  endIndent: 16,
+                                ),
                                 ListTile(
-                                  leading: const Icon(Icons.article_outlined, color: Colors.white, size: 28),
+                                  leading: const Icon(
+                                    Icons.article_outlined,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
                                   title: const Text(
                                     "Driver Blog",
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                   subtitle: const Text(
                                     "บทความที่เป็นประโยชน์สำหรับพาร์ทเนอร์",
-                                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                  trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                                  trailing: const Icon(
+                                    Icons.arrow_forward_ios,
+                                    color: Colors.white54,
+                                    size: 16,
+                                  ),
                                   onTap: () {},
                                 ),
                               ],

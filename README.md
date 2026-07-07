@@ -33,6 +33,7 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
 - **👤 Profile Management & Redesign:** 
   - Beautiful white-themed profile detail screen (`DriverProfileDetailPage`) with a custom circular pencil/edit button.
   - Redesigned "แก้ไขข้อมูลบัญชี" (`EditProfilePage`) screen matching custom mockup layout to update full name (first name & last name), email, and phone number.
+  - **🆕 User Reported History:** A dedicated tracking screen (`UserReportedHistoryPage`) to view and filter all submitted user-related reports by status ("ทั้งหมด", "กำลังตรวจสอบ", "ตรวจสอบแล้ว").
 - **💰 Upgraded Wallet System:** Premium styled UI cards displaying real-time balance, custom withdrawal input flow, and withdrawal transaction history screen.
 - **📍 Location & Team Tracking:** Automatic capture and storage of leader's GPS coordinates every 30 seconds into `buddyteam` database table when active.
 - **🖼️ Image Optimization:** Dynamic JSON parsing utility for resilient profile picture loading across the app.
@@ -55,7 +56,7 @@ lib/
 │   ├── Mybuddy_page/         # Active buddy details & Team management
 │   ├── Listdriverreport_page/# Driver problem & expense reporting interface
 │   ├── login_page/           # Authentication flow
-│   ├── profile_page/         # User profile & Vehicle information card
+│   ├── profile_page/         # User profile, vehicle card, and user reported history
 │   ├── view_wallet_balance/  # Dashboard for wallet
 │   ├── withdraw_wallet_page/ # Withdrawal interface
 │   ├── edit_profile_page/    # Phone number modification interface

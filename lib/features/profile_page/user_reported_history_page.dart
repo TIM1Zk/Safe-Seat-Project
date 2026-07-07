@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_project/core/network/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile_project/core/network/api_service.dart';
 
-class ListDriverReportPage extends StatefulWidget {
+class UserReportedHistoryPage extends StatefulWidget {
   final String username;
 
-  const ListDriverReportPage({super.key, required this.username});
+  const UserReportedHistoryPage({super.key, required this.username});
 
   @override
-  State<ListDriverReportPage> createState() => _ListDriverReportPageState();
+  State<UserReportedHistoryPage> createState() => _UserReportedHistoryPageState();
 }
 
-class _ListDriverReportPageState extends State<ListDriverReportPage> {
+class _UserReportedHistoryPageState extends State<UserReportedHistoryPage> {
   bool _isLoading = true;
   List<dynamic> _reports = [];
-  String _selectedTab = 'ทั้งหมด'; // 'ทั้งหมด', 'กำลังดำเนินการ', 'เสร็จสิ้น'
+  String _selectedFilter = 'ทั้งหมด'; // 'ทั้งหมด', 'กำลังตรวจสอบ', 'ตรวจสอบแล้ว'
 
   @override
   void initState() {
@@ -25,10 +25,8 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
   Future<void> _loadReports() async {
     try {
       setState(() => _isLoading = true);
-      // Fetching driver reports for this logged in driver
-      final response = await ApiService.get(
-        '/driver-reports?username=${widget.username}',
-      );
+      // Fetch user reports submitted in the system
+      final response = await ApiService.get('/user-reports');
 
       if (response.statusCode == 200) {
         setState(() {
@@ -43,29 +41,29 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('โหลดข้อมูลรายงานล้มเหลว: $e'),
-            backgroundColor: Colors.red,
+            content: Text('โหลดข้อมูลประวัติการรายงานล้มเหลว: $e'),
+            backgroundColor: Colors.redAccent,
           ),
         );
       }
     }
   }
 
-  // Filter reports based on the selected tab
   List<dynamic> _getFilteredReports() {
-    if (_selectedTab == 'ทั้งหมด') {
+    if (_selectedFilter == 'ทั้งหมด') {
       return _reports;
-    } else if (_selectedTab == 'กำลังดำเนินการ') {
-      return _reports
-          .where((r) => r['reportstatus'] == 'กำลังดำเนินการ')
-          .toList();
-    } else if (_selectedTab == 'เสร็จสิ้น') {
-      // Treat anything else as finished/resolved
-      return _reports
-          .where((r) => r['reportstatus'] != 'กำลังดำเนินการ')
-          .toList();
+    } else if (_selectedFilter == 'กำลังตรวจสอบ') {
+      return _reports.where((r) {
+        final status = (r['reportstatus'] ?? '').toString();
+        return status == 'กำลังดำเนินการ' || status == 'รอดำเนินการ' || status == 'Pending';
+      }).toList();
+    } else {
+      // ตรวจสอบแล้ว / เสร็จสิ้น
+      return _reports.where((r) {
+        final status = (r['reportstatus'] ?? '').toString();
+        return status != 'กำลังดำเนินการ' && status != 'รอดำเนินการ' && status != 'Pending';
+      }).toList();
     }
-    return _reports;
   }
 
   @override
@@ -76,7 +74,7 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
-          "รายงานปัญหาของฉัน",
+          "ประวัติการรายงานผู้ใช้",
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
@@ -91,7 +89,7 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
       ),
       body: Column(
         children: [
-          // Tab selection filter bar
+          // Filter Tabs
           _buildFilterTabs(),
 
           Expanded(
@@ -102,33 +100,29 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                     ),
                   )
                 : filteredReports.isEmpty
-                ? _buildEmptyState()
-                : RefreshIndicator(
-                    onRefresh: _loadReports,
-                    color: Colors.black,
-                    backgroundColor: Colors.white,
-                    child: ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 15,
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: _loadReports,
+                        color: Colors.black,
+                        backgroundColor: Colors.white,
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                          itemCount: filteredReports.length,
+                          itemBuilder: (context, index) {
+                            final report = filteredReports[index];
+                            return _buildReportCard(report);
+                          },
+                        ),
                       ),
-                      itemCount: filteredReports.length,
-                      itemBuilder: (context, index) {
-                        final report = filteredReports[index];
-                        return _buildReportCard(report);
-                      },
-                    ),
-                  ),
           ),
         ],
       ),
     );
   }
 
-  // Beautiful Tab Filters
   Widget _buildFilterTabs() {
-    final tabs = ['ทั้งหมด', 'กำลังดำเนินการ', 'เสร็จสิ้น'];
+    final tabs = ['ทั้งหมด', 'กำลังตรวจสอบ', 'ตรวจสอบแล้ว'];
     return Container(
       margin: const EdgeInsets.only(top: 10, bottom: 5, left: 20, right: 20),
       padding: const EdgeInsets.all(5),
@@ -138,30 +132,26 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
       ),
       child: Row(
         children: tabs.map((tab) {
-          final isSelected = _selectedTab == tab;
+          final isSelected = _selectedFilter == tab;
           return Expanded(
             child: GestureDetector(
               onTap: () {
                 setState(() {
-                  _selectedTab = tab;
+                  _selectedFilter = tab;
                 });
               },
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.black
-                      : Colors.transparent,
+                  color: isSelected ? Colors.black : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   tab,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: isSelected
-                        ? Colors.white
-                        : Colors.black54,
+                    color: isSelected ? Colors.white : Colors.black54,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -180,13 +170,13 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.article_outlined,
+            Icons.history_outlined,
             size: 80,
             color: Colors.black.withOpacity(0.1),
           ),
           const SizedBox(height: 20),
           Text(
-            "ไม่มีประวัติการแจ้งรายงาน ($_selectedTab)",
+            "ไม่มีประวัติการรายงานผู้ใช้ ($_selectedFilter)",
             style: TextStyle(
               color: Colors.black.withOpacity(0.4),
               fontSize: 16,
@@ -198,43 +188,12 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
     );
   }
 
-  // Get Custom Icon based on report type
-  IconData _getTypeIcon(String type) {
-    final lower = type.toLowerCase();
-    if (lower.contains('อุบัติเหตุ') ||
-        lower.contains('ฉุกเฉิน') ||
-        lower.contains('อันตราย')) {
-      return Icons.warning_amber_rounded;
-    } else if (lower.contains('ลูกค้า') ||
-        lower.contains('ผู้โดยสาร') ||
-        lower.contains('คน')) {
-      return Icons.person_outline_rounded;
-    } else if (lower.contains('ระบบ') ||
-        lower.contains('แอพ') ||
-        lower.contains('app') ||
-        lower.contains('ใช้งาน')) {
-      return Icons.phone_android_rounded;
-    } else if (lower.contains('เงิน') ||
-        lower.contains('จ่าย') ||
-        lower.contains('wallet') ||
-        lower.contains('รายได้')) {
-      return Icons.account_balance_wallet_outlined;
-    } else if (lower.contains('รถ') ||
-        lower.contains('พาหนะ') ||
-        lower.contains('เครื่องยนต์')) {
-      return Icons.directions_car_filled_outlined;
-    }
-    return Icons.description_outlined;
-  }
-
-  // Modern and Sleek Card layout for each report
   Widget _buildReportCard(Map<String, dynamic> report) {
     final String type = report['reporttype'] ?? 'ทั่วไป';
     final String detail = report['reportdetail'] ?? 'ไม่มีรายละเอียดเพิ่มเติม';
     final String status = report['reportstatus'] ?? 'กำลังดำเนินการ';
     final int requestId = report['request_id'] ?? 0;
 
-    // Parse Date
     String formattedDate = "ไม่ระบุวันที่";
     if (report['reportdate'] != null) {
       try {
@@ -245,7 +204,12 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
       }
     }
 
-    final bool inProgress = status == 'กำลังดำเนินการ';
+    final bool inProgress = status == 'กำลังดำเนินการ' || status == 'รอดำเนินการ' || status == 'Pending';
+
+    String typeThai = type;
+    if (type.toLowerCase() == 'behavior') typeThai = 'พฤติกรรมไม่เหมาะสม';
+    if (type.toLowerCase() == 'wrong location') typeThai = 'หมุดสถานที่ผิดพลาด';
+    if (type.toLowerCase() == 'safety issue') typeThai = 'ความปลอดภัย';
 
     return GestureDetector(
       onTap: () => _showReportDetails(report),
@@ -255,9 +219,7 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
           color: const Color(0xFFF8F9FA),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: inProgress
-                ? Colors.orange.withOpacity(0.2)
-                : Colors.black.withOpacity(0.06),
+            color: inProgress ? Colors.orange.withOpacity(0.2) : Colors.black.withOpacity(0.06),
             width: 1.5,
           ),
           boxShadow: [
@@ -273,11 +235,9 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row: Type and Status
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Type tag with icon
                   Row(
                     children: [
                       Container(
@@ -286,15 +246,15 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                           color: Colors.black.withOpacity(0.05),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          _getTypeIcon(type),
+                        child: const Icon(
+                          Icons.assignment_outlined,
                           color: Colors.black87,
                           size: 18,
                         ),
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        type,
+                        typeThai,
                         style: const TextStyle(
                           color: Colors.black87,
                           fontSize: 16,
@@ -303,12 +263,8 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                       ),
                     ],
                   ),
-                  // Status chip
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: inProgress
                           ? Colors.orange.withOpacity(0.1)
@@ -331,8 +287,6 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                 ],
               ),
               const SizedBox(height: 15),
-
-              // Detail preview
               Text(
                 detail,
                 maxLines: 2,
@@ -344,21 +298,13 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                 ),
               ),
               const SizedBox(height: 15),
-
-              // Divider
               Divider(color: Colors.black.withOpacity(0.06), height: 1),
               const SizedBox(height: 10),
-
-              // Footer: Request ID and Date
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Request ID badge
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(6),
@@ -372,7 +318,6 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                       ),
                     ),
                   ),
-                  // Date Text
                   Text(
                     formattedDate,
                     style: TextStyle(
@@ -389,13 +334,12 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
     );
   }
 
-  // Interactive Bottom Sheet to display full report details
   void _showReportDetails(Map<String, dynamic> report) {
     final String type = report['reporttype'] ?? 'ทั่วไป';
     final String detail = report['reportdetail'] ?? 'ไม่มีรายละเอียดเพิ่มเติม';
     final String status = report['reportstatus'] ?? 'กำลังดำเนินการ';
     final int requestId = report['request_id'] ?? 0;
-    final int index = report['reportindex'] ?? 0;
+    final int index = report['userreportid'] ?? 0;
     final String? imagePath = report['reportimagepath'];
 
     String formattedDate = "ไม่ระบุวันที่";
@@ -408,7 +352,12 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
       }
     }
 
-    final bool inProgress = status == 'กำลังดำเนินการ';
+    final bool inProgress = status == 'กำลังดำเนินการ' || status == 'รอดำเนินการ' || status == 'Pending';
+
+    String typeThai = type;
+    if (type.toLowerCase() == 'behavior') typeThai = 'พฤติกรรมไม่เหมาะสม';
+    if (type.toLowerCase() == 'wrong location') typeThai = 'หมุดสถานที่ผิดพลาด';
+    if (type.toLowerCase() == 'safety issue') typeThai = 'ความปลอดภัย';
 
     showModalBottomSheet(
       context: context,
@@ -430,7 +379,6 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Handle indicator bar
                   Center(
                     child: Container(
                       width: 50,
@@ -442,13 +390,11 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                       ),
                     ),
                   ),
-
-                  // Title and Close Button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        "รายละเอียดการรายงาน",
+                        "รายละเอียดการรายงานผู้ใช้",
                         style: TextStyle(
                           color: Colors.black87,
                           fontSize: 20,
@@ -456,20 +402,14 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: Colors.black54,
-                        ),
+                        icon: const Icon(Icons.close_rounded, color: Colors.black54),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-
-                  // Info Cards Grid-like
                   Row(
                     children: [
-                      // Status Badge
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(15),
@@ -477,28 +417,21 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                             color: const Color(0xFFF8F9FA),
                             borderRadius: BorderRadius.circular(15),
                             border: Border.all(
-                              color: inProgress
-                                  ? Colors.orange.withOpacity(0.3)
-                                  : Colors.green.withOpacity(0.3),
+                              color: inProgress ? Colors.orange.withOpacity(0.3) : Colors.green.withOpacity(0.3),
                             ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "สถานะการดำเนินการ",
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: 11,
-                                ),
+                              const Text(
+                                "สถานะการตรวจสอบ",
+                                style: TextStyle(color: Colors.black54, fontSize: 11),
                               ),
                               const SizedBox(height: 5),
                               Text(
                                 status,
                                 style: TextStyle(
-                                  color: inProgress
-                                      ? Colors.orange
-                                      : Colors.green,
+                                  color: inProgress ? Colors.orange : Colors.green,
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -508,30 +441,24 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                         ),
                       ),
                       const SizedBox(width: 15),
-                      // Type Badge
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(15),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8F9FA),
                             borderRadius: BorderRadius.circular(15),
-                            border: Border.all(
-                              color: Colors.black.withOpacity(0.08),
-                            ),
+                            border: Border.all(color: Colors.black.withOpacity(0.08)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "ประเภทปัญหา",
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: 11,
-                                ),
+                              const Text(
+                                "ประเภทการแจ้งเหตุ",
+                                style: TextStyle(color: Colors.black54, fontSize: 11),
                               ),
                               const SizedBox(height: 5),
                               Text(
-                                type,
+                                typeThai,
                                 style: const TextStyle(
                                   color: Colors.black87,
                                   fontSize: 15,
@@ -545,10 +472,8 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                     ],
                   ),
                   const SizedBox(height: 20),
-
-                  // Detail Body
                   const Text(
-                    "คำอธิบายของปัญหา",
+                    "รายละเอียดที่แจ้งรายงาน",
                     style: TextStyle(
                       color: Colors.black87,
                       fontSize: 14,
@@ -574,29 +499,13 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                     ),
                   ),
                   const SizedBox(height: 25),
-
-                  // Metadata section
-                  _buildDetailRow(
-                    Icons.confirmation_number_outlined,
-                    "รหัสรายงาน",
-                    "#${report['driverreportid'] ?? index}",
-                  ),
-                  _buildDetailRow(
-                    Icons.local_taxi_rounded,
-                    "รหัสงาน/การเรียกรถ",
-                    "#$requestId",
-                  ),
-                  _buildDetailRow(
-                    Icons.calendar_month_outlined,
-                    "วันที่แจ้งเรื่อง",
-                    formattedDate,
-                  ),
-
-                  // Report Image Attachment if available
+                  _buildDetailRow(Icons.confirmation_number_outlined, "รหัสรายงาน", "#$index"),
+                  _buildDetailRow(Icons.local_taxi_rounded, "รหัสงาน", "#$requestId"),
+                  _buildDetailRow(Icons.calendar_month_outlined, "วันที่แจ้งเรื่อง", formattedDate),
                   if (imagePath != null && imagePath.isNotEmpty) ...[
                     const SizedBox(height: 25),
                     const Text(
-                      "ภาพแนบประกอบ",
+                      "ภาพแนบหลักฐาน",
                       style: TextStyle(
                         color: Colors.black87,
                         fontSize: 14,
@@ -607,7 +516,9 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(15),
                       child: Image.network(
-                        imagePath,
+                        imagePath.startsWith('http') 
+                            ? imagePath 
+                            : 'https://qbionbozkvlekpakvstg.supabase.co/storage/v1/object/public/images/$imagePath',
                         width: double.infinity,
                         height: 200,
                         fit: BoxFit.cover,
@@ -619,15 +530,9 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    Icons.broken_image_outlined,
-                                    color: Colors.black26,
-                                  ),
+                                  Icon(Icons.broken_image_outlined, color: Colors.black26),
                                   SizedBox(width: 10),
-                                  Text(
-                                    "ไม่สามารถโหลดภาพประกอบได้",
-                                    style: TextStyle(color: Colors.black26),
-                                  ),
+                                  Text("ไม่สามารถโหลดภาพหลักฐานได้", style: TextStyle(color: Colors.black26)),
                                 ],
                               ),
                             ),
@@ -655,10 +560,7 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
           const SizedBox(width: 12),
           Text(
             "$label:",
-            style: TextStyle(
-              color: Colors.black54,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.black54, fontSize: 13),
           ),
           const SizedBox(width: 8),
           Expanded(
