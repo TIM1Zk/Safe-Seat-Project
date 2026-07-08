@@ -33,7 +33,8 @@ The project has recently been refactored to a strict **MVC Architecture**. The m
 - **👤 Profile Management & Redesign:** 
   - Beautiful white-themed profile detail screen (`DriverProfileDetailPage`) with a custom circular pencil/edit button.
   - Redesigned "แก้ไขข้อมูลบัญชี" (`EditProfilePage`) screen matching custom mockup layout to update full name (first name & last name), email, and phone number.
-  - **🆕 User Reported History:** A dedicated tracking screen (`UserReportedHistoryPage`) to view and filter all submitted user-related reports by status ("ทั้งหมด", "กำลังตรวจสอบ", "ตรวจสอบแล้ว").
+  - **🆕 Review & Rating Display:** Displays real-time average review ratings and a list of feedback/comments from users on the profile page.
+  - **🆕 User Reported History:** A dedicated tracking screen (`UserReportedHistoryPage`) to view and filter all submitted user-related reports by status ("ทั้งหมด", "กำลังตรวจสอบ", "ตรวจสอบแล้ว", "ไม่อนุมัติ" with red indicator color).
 - **💰 Upgraded Wallet System:** Premium styled UI cards displaying real-time balance, custom withdrawal input flow, and withdrawal transaction history screen.
 - **📍 Location & Team Tracking:** Automatic capture and storage of leader's GPS coordinates every 30 seconds into `buddyteam` database table when active.
 - **🖼️ Image Optimization:** Dynamic JSON parsing utility for resilient profile picture loading across the app.
@@ -67,7 +68,7 @@ lib/
 
 ### Backend (Node.js)
 ```text
-backend/
+safeseat_backend/
 ├── src/
 │   ├── controllers/          # buddyRequestController.js, driverReportController.js, userController.js, etc.
 │   ├── models/               # buddyRequestModel.js, driverReportModel.js, userModel.js, authModel.js
@@ -89,16 +90,16 @@ backend/
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/TIM1Zk/Mobile_project.git
-   cd Mobile_project
+   git clone https://github.com/TIM1Zk/Safe-Seat-Project.git
+   cd Safe-Seat-Project
    ```
 
 2. **Backend Setup:**
    ```bash
-   cd backend
+   cd safeseat_backend
    npm install
    ```
-   *Create a `.env` file in the `backend/` directory with your Supabase credentials (see `.env.example` or code for keys).*
+   *Create a `.env` file in the `safeseat_backend/` directory with your Supabase credentials (see `.env.example` or code for keys).*
 
 3. **Run the Backend:**
    ```bash
@@ -108,7 +109,7 @@ backend/
 
 4. **Frontend Setup:**
    ```bash
-   # Open a new terminal in the root Mobile_project directory
+   # Open a new terminal in the root Safe-Seat-Project directory
    flutter pub get
    ```
    *Note: API base URL is configured in `lib/main.dart` (Default: `http://10.0.2.2:3000/api` for Android emulator).*
