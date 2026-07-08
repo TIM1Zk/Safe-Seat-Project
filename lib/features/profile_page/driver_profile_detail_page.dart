@@ -34,6 +34,26 @@ class DriverProfileDetailPage extends StatelessWidget {
 
     final subtitleText = "เข้าร่วมเมื่อ $joinDate" + (carPlate.isNotEmpty ? " | $carPlate" : " | รวย 1234");
 
+    // Review statistics extraction
+    final stats = profileData['review_stats'] ?? {};
+    final int reviewCount = stats['count'] ?? 0;
+    final double averageRating = (stats['average'] != null) ? double.tryParse(stats['average'].toString()) ?? 0.0 : 0.0;
+    final dist = stats['distribution'] ?? {};
+    
+    final int count5 = int.tryParse(dist['5']?.toString() ?? '0') ?? 0;
+    final int count4 = int.tryParse(dist['4']?.toString() ?? '0') ?? 0;
+    final int count3 = int.tryParse(dist['3']?.toString() ?? '0') ?? 0;
+    final int count2 = int.tryParse(dist['2']?.toString() ?? '0') ?? 0;
+    final int count1 = int.tryParse(dist['1']?.toString() ?? '0') ?? 0;
+
+    final double pct5 = reviewCount > 0 ? count5 / reviewCount : 0.0;
+    final double pct4 = reviewCount > 0 ? count4 / reviewCount : 0.0;
+    final double pct3 = reviewCount > 0 ? count3 / reviewCount : 0.0;
+    final double pct2 = reviewCount > 0 ? count2 / reviewCount : 0.0;
+    final double pct1 = reviewCount > 0 ? count1 / reviewCount : 0.0;
+
+    final List<dynamic> reviewsList = profileData['reviews'] ?? [];
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
@@ -149,7 +169,7 @@ class DriverProfileDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // 3. Rating Summary Card (การให้คะแนน 56 ครั้งล่าสุด)
+                // 3. Rating Summary Card
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -159,9 +179,9 @@ class DriverProfileDetailPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "การให้คะแนน 56 ครั้งล่าสุด",
-                        style: TextStyle(
+                      Text(
+                        "การให้คะแนน $reviewCount ครั้งล่าสุด",
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: Colors.black54,
@@ -172,17 +192,17 @@ class DriverProfileDetailPage extends StatelessWidget {
                         children: [
                           // Left Rating Score
                           Column(
-                            children: const [
+                            children: [
                               Text(
-                                "5.00",
-                                style: TextStyle(
+                                averageRating.toStringAsFixed(2),
+                                style: const TextStyle(
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black,
                                 ),
                               ),
-                              SizedBox(height: 4),
-                              Text(
+                              const SizedBox(height: 4),
+                              const Text(
                                 "คะแนนคนขับ",
                                 style: TextStyle(
                                   fontSize: 11,
@@ -196,15 +216,15 @@ class DriverProfileDetailPage extends StatelessWidget {
                           Expanded(
                             child: Column(
                               children: [
-                                _buildRatingRow(5, 56, 1.0),
+                                _buildRatingRow(5, count5, pct5),
                                 const SizedBox(height: 4),
-                                _buildRatingRow(4, 0, 0.0),
+                                _buildRatingRow(4, count4, pct4),
                                 const SizedBox(height: 4),
-                                _buildRatingRow(3, 0, 0.0),
+                                _buildRatingRow(3, count3, pct3),
                                 const SizedBox(height: 4),
-                                _buildRatingRow(2, 0, 0.0),
+                                _buildRatingRow(2, count2, pct2),
                                 const SizedBox(height: 4),
-                                _buildRatingRow(1, 0, 0.0),
+                                _buildRatingRow(1, count1, pct1),
                               ],
                             ),
                           ),
@@ -226,67 +246,116 @@ class DriverProfileDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // 5. Empty State / Info Card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE5E5E7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.visibility_outlined, size: 20, color: Colors.black54),
-                          SizedBox(width: 8),
-                          Text(
-                            "มีเพียงคุณเท่านั้นที่เห็นหน้านี้",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black54,
+                // 5. Reviews List or Empty State
+                if (reviewsList.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E5E7),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.visibility_outlined, size: 20, color: Colors.black54),
+                            SizedBox(width: 8),
+                            Text(
+                              "มีเพียงคุณเท่านั้นที่เห็นหน้านี้",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
+                              ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          "ผู้โดยสารแนะนำให้คุณปรับปรุงในเรื่องต่อไปนี้",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.black45,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        const Icon(
+                          Icons.search_rounded,
+                          size: 56,
+                          color: Colors.black54,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          "ยังไม่มีรายงาน",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "เมื่อให้บริการโดยสารมากขึ้น คุณจะได้รับข้อเสนอแนะเกี่ยวกับการปรับปรุงบริการของตัวเอง",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.black45,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ...reviewsList.map((rev) {
+                    final int rate = rev['reviewrate'] ?? 5;
+                    final String comment = rev['reviewcomment'] ?? 'ไม่มีความคิดเห็น';
+                    String dateStr = '';
+                    if (rev['reviewdate'] != null) {
+                      try {
+                        DateTime dt = DateTime.parse(rev['reviewdate']);
+                        dateStr = "${dt.day} ${_getThaiMonth(dt.month)} ${dt.year + 543}";
+                      } catch (_) {}
+                    }
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE5E5E7),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Row(
+                                children: List.generate(5, (index) {
+                                  return Icon(
+                                    index < rate ? Icons.star : Icons.star_border,
+                                    color: Colors.amber,
+                                    size: 16,
+                                  );
+                                }),
+                              ),
+                              const Spacer(),
+                              Text(
+                                dateStr,
+                                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            comment,
+                            style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        "ผู้โดยสารแนะนำให้คุณปรับปรุงในเรื่องต่อไปนี้",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black45,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      const Icon(
-                        Icons.search_rounded,
-                        size: 56,
-                        color: Colors.black54,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        "ยังไม่มีรายงาน",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "เมื่อให้บริการโดยสารมากขึ้น คุณจะได้รับข้อเสนอแนะเกี่ยวกับการปรับปรุงบริการของตัวเอง",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black45,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    );
+                  }).toList(),
               ],
             ),
           ),

@@ -278,31 +278,37 @@ class _ListDriverReportPageState extends State<ListDriverReportPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Type tag with icon
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.05),
-                          shape: BoxShape.circle,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.05),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _getTypeIcon(type),
+                            color: Colors.black87,
+                            size: 18,
+                          ),
                         ),
-                        child: Icon(
-                          _getTypeIcon(type),
-                          color: Colors.black87,
-                          size: 18,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            type,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        type,
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 10),
                   // Status chip
                   Container(
                     padding: const EdgeInsets.symmetric(

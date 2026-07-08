@@ -268,17 +268,23 @@ class _UserReportedHistoryPageState extends State<UserReportedHistoryPage> {
                     decoration: BoxDecoration(
                       color: inProgress
                           ? Colors.orange.withOpacity(0.1)
-                          : Colors.green.withOpacity(0.1),
+                          : (status == 'ไม่อนุมัติ'
+                              ? Colors.red.withOpacity(0.1)
+                              : Colors.green.withOpacity(0.1)),
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(
-                        color: inProgress ? Colors.orange : Colors.green,
+                        color: inProgress
+                            ? Colors.orange
+                            : (status == 'ไม่อนุมัติ' ? Colors.red : Colors.green),
                         width: 1,
                       ),
                     ),
                     child: Text(
                       status,
                       style: TextStyle(
-                        color: inProgress ? Colors.orange : Colors.green,
+                        color: inProgress
+                            ? Colors.orange
+                            : (status == 'ไม่อนุมัติ' ? Colors.red : Colors.green),
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),

@@ -1169,29 +1169,7 @@ class _MapPageState extends State<MapPage> {
             ],
           ),
 
-          // Debug Button to simulate active job
-          Positioned(
-            top: 50,
-            right: 20,
-            child: FloatingActionButton.small(
-              backgroundColor: Colors.redAccent,
-              tooltip: "Simulate Active Job",
-              child: const Icon(Icons.bug_report, color: Colors.white),
-              onPressed: () {
-                setState(() {
-                  _hasActiveJob = !_hasActiveJob;
-                  if (_hasActiveJob) {
-                    _activeRequestId = 54; // Valid test request ID
-                    _currentJobStatus = 'going to pickup';
-                    _clientName = "คุณหญิงนุ้งนิ้ม สายบันเทิง";
-                    _clientPhone = "081-234-5678";
-                  } else {
-                    _activeRequestId = null;
-                  }
-                });
-              },
-            ),
-          ),
+
 
           // 2. ป้ายแสดงรายละเอียด Marker เมื่อถูกสัมผัสแตะ
           if (_selectedPlaceName != null)

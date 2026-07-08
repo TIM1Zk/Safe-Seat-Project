@@ -144,16 +144,16 @@ class ProfilePage extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 6),
                                   Row(
-                                    children: const [
-                                      Icon(
+                                    children: [
+                                      const Icon(
                                         Icons.star,
                                         color: Colors.amber,
                                         size: 18,
                                       ),
-                                      SizedBox(width: 4),
+                                      const SizedBox(width: 4),
                                       Text(
-                                        "4.5",
-                                        style: TextStyle(
+                                        "${(data['review_stats'] != null && data['review_stats']['average'] != null) ? double.tryParse(data['review_stats']['average'].toString())?.toStringAsFixed(1) ?? '0.0' : '0.0'}",
+                                        style: const TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.black54,
