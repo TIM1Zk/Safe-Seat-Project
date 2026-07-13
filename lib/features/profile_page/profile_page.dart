@@ -217,17 +217,17 @@ class ProfilePage extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 Column(
-                                  children: const [
+                                  children: [
                                     Text(
-                                      "100.0%",
-                                      style: TextStyle(
+                                      data['acceptance_rate']?.toString() ?? "100.0%",
+                                      style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.black87,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
-                                    Text(
+                                    const SizedBox(height: 4),
+                                    const Text(
                                       "อัตราการรับ",
                                       style: TextStyle(
                                         fontSize: 12,
@@ -237,17 +237,17 @@ class ProfilePage extends StatelessWidget {
                                   ],
                                 ),
                                 Column(
-                                  children: const [
+                                  children: [
                                     Text(
-                                      "100.0%",
-                                      style: TextStyle(
+                                      data['cancellation_rate']?.toString() ?? "0.0%",
+                                      style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.black87,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
-                                    Text(
+                                    const SizedBox(height: 4),
+                                    const Text(
                                       "อัตราการยกเลิก",
                                       style: TextStyle(
                                         fontSize: 12,
